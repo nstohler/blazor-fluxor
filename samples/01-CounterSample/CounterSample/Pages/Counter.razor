@@ -1,19 +1,8 @@
 ﻿@page "/"
-@inherits Blazor.Fluxor.Components.FluxorComponent
-@using Blazor.Fluxor
-@using Store.Counter
-@inject IDispatcher Dispatcher
-@inject IState<CounterState> CounterState
+@inherits CounterBase
 
 <h1>Counter</h1>
 
 <p>Current count: @CounterState.Value.ClickCount</p>
 
 <button class="btn btn-primary" @onclick=IncrementCount>Click me</button>
-
-@code {
-	void IncrementCount()
-	{
-		Dispatcher.Dispatch(new IncrementCounterAction());
-	}
-}

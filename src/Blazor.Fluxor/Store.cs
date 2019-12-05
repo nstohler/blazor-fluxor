@@ -26,7 +26,10 @@ namespace Blazor.Fluxor
 		private readonly List<IEffect> Effects = new List<IEffect>();
 		private readonly List<IMiddleware> Middlewares = new List<IMiddleware>();
 		private readonly List<IMiddleware> ReversedMiddlewares = new List<IMiddleware>();
-		private readonly Queue<object> QueuedActions = new Queue<object>();
+		
+		//private readonly Queue<object> QueuedActions = new Queue<object>();
+		private readonly Queue<(object action, object reaction)> QueuedActions = new Queue<(object action, object reaction)>();
+
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
 		private int BeginMiddlewareChangeCount;
@@ -60,8 +63,8 @@ namespace Blazor.Fluxor
 			FeaturesByName.Add(feature.GetName(), feature);
 		}
 
-		/// <see cref="IDispatcher.Dispatch(object)"/>
-		public void Dispatch(object action)
+		/// <see cref="IDispatcher.Dispatch"/>
+		public void Dispatch(object action, Action<IResultAction> resultAction = null)
 		{
 			if (action == null)
 				throw new ArgumentNullException(nameof(action));
@@ -82,7 +85,7 @@ namespace Blazor.Fluxor
 			//	3: The effect immediately dispatches a new action
 			// The Queue ensures it is processed after its triggering action has completed rather than immediately
 			bool wasAlreadyDispatching = QueuedActions.Any();
-			QueuedActions.Enqueue(action);
+			QueuedActions.Enqueue((action, resultAction));
 			if (wasAlreadyDispatching)
 				return;
 
@@ -205,7 +208,12 @@ namespace Blazor.Fluxor
 			{
 				// We want the next action but we won't dequeue it because we use
 				// a non-empty queue as an indication that a Dispatch() loop is already in progress
-				object nextActionToDequeue = QueuedActions.Peek();
+
+				//object nextActionToDequeue = QueuedActions.Peek();
+				var item = QueuedActions.Peek();
+				var nextActionToDequeue = item.action;
+				//nextActionToDequeue.action
+
 				// Only process the action if no middleware vetos it
 				if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))
 				{
@@ -218,6 +226,17 @@ namespace Blazor.Fluxor
 					ExecuteMiddlewareAfterDispatch(nextActionToDequeue);
 
 					TriggerEffects(nextActionToDequeue);
+
+					// test: invoke reaction if present
+					if (item.reaction != null)
+					{
+						var r = item.reaction as Action<IResultAction>;
+
+						if (r != null)
+						{
+							r.Invoke(null);
+						}
+					}
 				}
 				// Now remove the processed action from the queue so we can move on to the next (if any)
 				QueuedActions.Dequeue();

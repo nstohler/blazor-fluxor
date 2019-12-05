@@ -1,4 +1,6 @@
-﻿namespace Blazor.Fluxor
+﻿using System;
+
+namespace Blazor.Fluxor
 {
 	/// <summary>
 	/// Interface that blazor components/pages should use to dispatch actions
@@ -15,6 +17,7 @@
 		/// effects (<see cref="IEffect"/>).
 		/// </remarks>
 		/// <param name="action">The action to dispatch to all features</param>
-		void Dispatch(object action);
+		/// <param name="unknown"></param>
+		void Dispatch(object action, Action<IResultAction> resultAction = null);
 	}
 }

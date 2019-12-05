@@ -1,6 +1,14 @@
-﻿namespace CounterSample.Store.Counter
+﻿using Blazor.Fluxor;
+
+namespace CounterSample.Store.Counter
 {
 	public class IncrementCounterAction
 	{
 	}
+
+    public class IncrementCounterResultAction : IResultAction
+    {
+        public string Message { get; set; }
+        public int Count { get; set; }
+    }
 }
