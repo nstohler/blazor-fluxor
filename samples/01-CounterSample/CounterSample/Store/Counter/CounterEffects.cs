@@ -9,15 +9,31 @@ namespace CounterSample.Store.Counter
 {
     public class CounterEffects
     {
+        private readonly IState<CounterState> _counterState;
+
+        public CounterEffects(IState<CounterState> counterState)
+        {
+            _counterState = counterState;
+        }
+
         [EffectMethod]
         public Task HandleAsync(IncrementCounterAction action, IDispatcher dispatcher)
         {
-            dispatcher.Dispatch(new IncrementCounterResultAction()
+            if (_counterState.Value.ClickCount % 2 == 0)
             {
-                Count = 123,
-                Message = $"from {DateTime.Now}"
-            });
-
+                dispatcher.Dispatch(new IncrementCounterIsNowEvenResultAction()
+                {
+                    IsEven = true
+                });
+            }
+            else
+            {
+                dispatcher.Dispatch(new IncrementCounterResultAction()
+                {
+                    Count   = 123,
+                    Message = $"from {DateTime.Now}"
+                });
+            }
             return Task.CompletedTask;
         }
     }

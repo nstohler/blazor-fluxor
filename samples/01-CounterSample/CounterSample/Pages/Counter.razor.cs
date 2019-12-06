@@ -17,16 +17,33 @@ namespace CounterSample.Pages
 
         protected void IncrementCount()
         {
-            Dispatcher.Dispatch<IncrementCounterResultAction>(new IncrementCounterAction(),
-                (resultAction) =>
-                {
-                    Console.WriteLine($"Reaction received!");
+            //Dispatcher.Dispatch(new IncrementCounterAction(),
+            //    (IncrementCounterResultAction resultAction) =>
+            //    {
+            //        Console.WriteLine($"Reaction received!");
 
-                    if (resultAction is IncrementCounterResultAction result)
-                    {
-                        Console.WriteLine($"Reaction is {result.Message}");
-                    }
-                });
+            //        if (resultAction is IncrementCounterResultAction result)
+            //        {
+            //            Console.WriteLine($"Reaction is {result.Message}");
+            //        }
+            //    });
+
+            // TODO:
+
+            Dispatcher.Dispatch(new IncrementCounterAction(),
+                (IncrementCounterResultAction resultAction) =>
+                {
+                    Console.WriteLine($"IncrementCounterResultAction received!");
+                    Console.WriteLine($"==> IncrementCounterResultAction is {resultAction.Message}");
+                },
+                // multiple registrations? cleanup how? timeouts?
+                (IncrementCounterIsNowEvenResultAction resultAction) =>
+                {
+                    Console.WriteLine($"IncrementCounterIsNowEvenResultAction received!"); 
+                    Console.WriteLine($"==> IncrementCounterIsNowEvenResultAction is even: {resultAction.IsEven}");
+                }
+
+                );
         }
 
         protected void IncrementCountNormal()

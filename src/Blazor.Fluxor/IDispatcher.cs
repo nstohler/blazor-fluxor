@@ -23,5 +23,11 @@ namespace Blazor.Fluxor
 
 		//void Dispatch<T>(object action, Action<IResultAction<T>> resultAction);
 		void Dispatch<T>(object action, Action<T> resultAction);
+		
+		void Dispatch<T1, T2>(object action, Action<T1> resultAction1, Action<T2> resultAction2);
+		
+		void Dispatch<T1, T2, T3>(object action, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
+
+
 	}
 }

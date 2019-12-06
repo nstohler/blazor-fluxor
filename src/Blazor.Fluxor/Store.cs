@@ -18,25 +18,31 @@ namespace Blazor.Fluxor
 	{
 		/// <see cref="IStore.Features"/>
 		public IReadOnlyDictionary<string, IFeature> Features => FeaturesByName;
+
 		/// <see cref="IStore.Initialized"/>
 		public Task Initialized => InitializedCompletionSource.Task;
 
 		private IStoreInitializationStrategy StoreInitializationStrategy;
-		private readonly Dictionary<string, IFeature> FeaturesByName = new Dictionary<string, IFeature>(StringComparer.InvariantCultureIgnoreCase);
-		private readonly List<IEffect> Effects = new List<IEffect>();
-		private readonly List<IMiddleware> Middlewares = new List<IMiddleware>();
-		private readonly List<IMiddleware> ReversedMiddlewares = new List<IMiddleware>();
-		
-		//private readonly Queue<object> QueuedActions = new Queue<object>();
-		private readonly Queue<(object action, object reaction)> QueuedActions = new Queue<(object action, object reaction)>();
 
-		private readonly Dictionary<Type, List<Action<object>>> Reactions = new Dictionary<Type, List<Action<object>>>();
+		private readonly Dictionary<string, IFeature> FeaturesByName =
+			new Dictionary<string, IFeature>(StringComparer.InvariantCultureIgnoreCase);
+
+		private readonly List<IEffect>     Effects             = new List<IEffect>();
+		private readonly List<IMiddleware> Middlewares         = new List<IMiddleware>();
+		private readonly List<IMiddleware> ReversedMiddlewares = new List<IMiddleware>();
+
+		private readonly Queue<object> QueuedActions = new Queue<object>();
+		//private readonly Queue<(object action, object reaction)> QueuedActions = new Queue<(object action, object reaction)>();
+
+		//private readonly Dictionary<Type, List<Action<object>>> Reactions = new Dictionary<Type, List<Action<object>>>();
+		private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
+		private readonly Dictionary<string, ReactionItem> GuidReactionItemDict = new Dictionary<string, ReactionItem>();
 
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
-		private int BeginMiddlewareChangeCount;
-		private bool HasActivatedStore;
-		private bool IsInsideMiddlewareChange => BeginMiddlewareChangeCount > 0;
+		private int                      BeginMiddlewareChangeCount;
+		private bool                     HasActivatedStore;
+		private bool                     IsInsideMiddlewareChange => BeginMiddlewareChangeCount > 0;
 		private Action<IFeature, object> IFeatureReceiveDispatchNotificationFromStore;
 
 		/// <summary>
@@ -49,7 +55,7 @@ namespace Blazor.Fluxor
 
 			MethodInfo dispatchNotifictionFromStoreMethodInfo =
 				typeof(IFeature)
-				.GetMethod(nameof(IFeature.ReceiveDispatchNotificationFromStore));
+					.GetMethod(nameof(IFeature.ReceiveDispatchNotificationFromStore));
 			IFeatureReceiveDispatchNotificationFromStore = (Action<IFeature, object>)
 				Delegate.CreateDelegate(typeof(Action<IFeature, object>), dispatchNotifictionFromStoreMethodInfo);
 
@@ -67,12 +73,23 @@ namespace Blazor.Fluxor
 
 		public void Dispatch(object action)
 		{
-			this.Dispatch<object>(action, null);
+			Dispatch<object, object, object>(action, null, null, null);
 		}
 
 		/// <see cref="IDispatcher.Dispatch"/>
 		//public void Dispatch<T>(object action, Action<IResultAction<T>> resultAction)
 		public void Dispatch<T>(object action, Action<T> resultAction)
+		{
+			Dispatch<T, object, object>(action, resultAction, null, null);
+		}
+
+		public void Dispatch<T1, T2>(object action, Action<T1> resultAction1, Action<T2> resultAction2)
+		{
+			Dispatch<T1, T2, object>(action, resultAction1, resultAction2, null);
+		}
+
+		public void Dispatch<T1, T2, T3>(object action, Action<T1> resultAction1, Action<T2> resultAction2,
+			Action<T3> resultAction3)
 		{
 			if (action == null)
 				throw new ArgumentNullException(nameof(action));
@@ -93,22 +110,40 @@ namespace Blazor.Fluxor
 			//	3: The effect immediately dispatches a new action
 			// The Queue ensures it is processed after its triggering action has completed rather than immediately
 			bool wasAlreadyDispatching = QueuedActions.Any();
-			
-			QueuedActions.Enqueue((action, resultAction));
-			
-			if (resultAction != null)
-			{
-				//var key = resultAction.GetType();
-				var key = typeof(T);
 
-				if (!Reactions.ContainsKey(key))
+			//QueuedActions.Enqueue((action, resultAction));
+			QueuedActions.Enqueue(action);
+
+			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
+
+			// store reactionItems
+			foreach (var reactionItem in reactionItems)
+			{
+				var key = reactionItem.ActionType;
+				Console.WriteLine($"--adding to dict: {key.FullName}");
+				if (!TypeReactionItemDict.ContainsKey(key))
 				{
-					//Reactions.Add(key, new List<object>());
-					Reactions.Add(key, new List<Action<object>>());
+					//TypeReactionItemDict.Add(key, new List<ReactionItem>());
+					TypeReactionItemDict.Add(key, reactionItem);
 				}
-				//Reactions[key].Add(resultAction);
-				Reactions[key].Add(Convert(resultAction));
+				//TypeReactionItemDict[key].Add(reactionItem);
 			}
+			
+			//// store resultAction
+			//if (resultAction != null)
+			//{
+			//	//var key = resultAction.GetType();
+			//	var key = typeof(T);
+
+			//	if (!Reactions.ContainsKey(key))
+			//	{
+			//		//Reactions.Add(key, new List<object>());
+			//		Reactions.Add(key, new List<Action<object>>());
+			//	}
+
+			//	//Reactions[key].Add(resultAction);
+			//	Reactions[key].Add(Convert(resultAction));
+			//}
 
 			if (wasAlreadyDispatching)
 				return;
@@ -119,6 +154,42 @@ namespace Blazor.Fluxor
 				return;
 
 			DequeueActions();
+		}
+
+		private List<ReactionItem> GetReactionItems<T1, T2, T3>(Action<T1> resultAction1, Action<T2> resultAction2,
+			Action<T3> resultAction3)
+		{
+			var resultActions = new List<ReactionItem>();
+
+			var guid      = Guid.NewGuid();
+			var timestamp = DateTime.Now;
+
+			if (resultAction1 != null)
+			{
+				resultActions.Add(CreateReactionItem(resultAction1, timestamp, guid));
+			}
+
+			if (resultAction2 != null)
+			{
+				resultActions.Add(CreateReactionItem(resultAction2, timestamp, guid));
+			}
+
+			if (resultAction3 != null)
+			{
+				resultActions.Add(CreateReactionItem(resultAction3, timestamp, guid));
+			}
+
+			return resultActions;
+		}
+
+		private ReactionItem CreateReactionItem<T>(Action<T> action, DateTime timestamp, Guid guid)
+		{
+			return new ReactionItem() {
+				Action     = Convert(action),
+				ActionType = typeof(T),
+				Guid       = guid,
+				TimeStamp  = timestamp
+			};
 		}
 
 		public Action<object> Convert<T>(Action<T> myActionT)
@@ -239,10 +310,10 @@ namespace Blazor.Fluxor
 				// We want the next action but we won't dequeue it because we use
 				// a non-empty queue as an indication that a Dispatch() loop is already in progress
 
-				//object nextActionToDequeue = QueuedActions.Peek();
-				var item = QueuedActions.Peek();
-				var nextActionToDequeue = item.action;
-				//nextActionToDequeue.action
+				object nextActionToDequeue = QueuedActions.Peek();
+				
+				//var item                = QueuedActions.Peek();
+				//var nextActionToDequeue = item.action;
 
 				// Only process the action if no middleware vetos it
 				if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))
@@ -258,32 +329,49 @@ namespace Blazor.Fluxor
 					TriggerEffects(nextActionToDequeue);
 
 					Console.WriteLine($"DequeueActionsX: {nextActionToDequeue.GetType().Name}");
-					Console.WriteLine($"DequeueActionsX: {Reactions.Count}");
+					Console.WriteLine($"DequeueActionsX: {TypeReactionItemDict.Count}");
 
-					foreach (var reaction in Reactions)
+					foreach (var reactionItemX in TypeReactionItemDict)
 					{
-						Console.WriteLine($"   [{reaction.Key.Name}]");
+						Console.WriteLine($" => registered reaction type: [{reactionItemX.Key.Name}]");
 					}
 
 					// check if this action (nextActionToDequeue) has an entry in Reactions
 					//if (Reactions.ContainsKey(nextActionToDequeue.GetType()))
 					var reactionKey = nextActionToDequeue.GetType();
-					if (Reactions.TryGetValue(reactionKey, out List<Action<object>> reactionItems))
+
+					//if (TypeReactionItemDict.TryGetValue(reactionKey, out List<ReactionItem> reactionItems))
+					if (TypeReactionItemDict.TryGetValue(reactionKey, out ReactionItem reactionItem))
 					{
-						Console.WriteLine($"- found entry: {reactionKey} | {reactionItems.Count}");
-						foreach (var reactionItem in reactionItems)
+						//Console.WriteLine($"- found entry: {reactionKey} | {reactionItems.Count}");
+
+						//foreach (var reactionItem in reactionItems)
 						{
-							Console.WriteLine($"-- item: {reactionItem.GetType()}");
-							
+							Console.WriteLine($"-- item: {reactionItem.Action.GetType()}");
+
 							//if (reactionItem is Action<IResultAction<object>> r)
-							if (reactionItem is Action<object> r)
+							if (reactionItem.Action is Action<object> r)	// not really required, should be always true!
 							{
-								Console.WriteLine($"--- invoke...");
+								Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
 								r.Invoke(nextActionToDequeue);
 							}
 						}
 
-						Reactions.Remove(reactionKey);
+						var removeGuid = reactionItem.Guid;
+
+						//TypeReactionItemDict = TypeReactionItemDict.Where(x => x.Value.Guid != removeGuid)
+						//	.ToDictionary(x => x);
+
+						var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
+						foreach (var removeKey in removeKeys)
+						{
+							TypeReactionItemDict.Remove(removeKey);
+						}
+
+						//TypeReactionItemDict.Remove(reactionKey);
+
+						//remove all items with same guid
+						
 					}
 
 					// test: invoke reaction if present
@@ -295,6 +383,7 @@ namespace Blazor.Fluxor
 					//	}
 					//}
 				}
+
 				// Now remove the processed action from the queue so we can move on to the next (if any)
 				QueuedActions.Dequeue();
 			}

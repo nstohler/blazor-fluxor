@@ -7,9 +7,14 @@ namespace CounterSample.Store.Counter
 	}
 
     public class IncrementCounterResultAction 
-        : IResultAction<IncrementCounterResultAction>
+        //: IResultAction<IncrementCounterResultAction>
     {
         public string Message { get; set; }
         public int Count { get; set; }
+    }
+
+    public class IncrementCounterIsNowEvenResultAction
+    {
+        public bool IsEven { get; set; }
     }
 }
