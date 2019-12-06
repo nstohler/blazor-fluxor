@@ -36,7 +36,7 @@ namespace Blazor.Fluxor
 
 		//private readonly Dictionary<Type, List<Action<object>>> Reactions = new Dictionary<Type, List<Action<object>>>();
 		private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
-		private readonly Dictionary<string, ReactionItem> GuidReactionItemDict = new Dictionary<string, ReactionItem>();
+		//private readonly Dictionary<string, ReactionItem> GuidReactionItemDict = new Dictionary<string, ReactionItem>();
 
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
