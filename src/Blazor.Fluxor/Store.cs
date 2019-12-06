@@ -32,12 +32,10 @@ namespace Blazor.Fluxor
 		private readonly List<IMiddleware> ReversedMiddlewares = new List<IMiddleware>();
 
 		private readonly Queue<object> QueuedActions = new Queue<object>();
-		//private readonly Queue<(object action, object reaction)> QueuedActions = new Queue<(object action, object reaction)>();
-
-		//private readonly Dictionary<Type, List<Action<object>>> Reactions = new Dictionary<Type, List<Action<object>>>();
+		
+		// reactions
 		private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
-		//private readonly Dictionary<string, ReactionItem> GuidReactionItemDict = new Dictionary<string, ReactionItem>();
-
+		
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
 		private int                      BeginMiddlewareChangeCount;
@@ -114,37 +112,19 @@ namespace Blazor.Fluxor
 			//QueuedActions.Enqueue((action, resultAction));
 			QueuedActions.Enqueue(action);
 
+			// prepare reaction items
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
 
 			// store reactionItems
 			foreach (var reactionItem in reactionItems)
 			{
 				var key = reactionItem.ActionType;
-				Console.WriteLine($"--adding to dict: {key.FullName}");
 				if (!TypeReactionItemDict.ContainsKey(key))
 				{
-					//TypeReactionItemDict.Add(key, new List<ReactionItem>());
 					TypeReactionItemDict.Add(key, reactionItem);
 				}
-				//TypeReactionItemDict[key].Add(reactionItem);
 			}
 			
-			//// store resultAction
-			//if (resultAction != null)
-			//{
-			//	//var key = resultAction.GetType();
-			//	var key = typeof(T);
-
-			//	if (!Reactions.ContainsKey(key))
-			//	{
-			//		//Reactions.Add(key, new List<object>());
-			//		Reactions.Add(key, new List<Action<object>>());
-			//	}
-
-			//	//Reactions[key].Add(resultAction);
-			//	Reactions[key].Add(Convert(resultAction));
-			//}
-
 			if (wasAlreadyDispatching)
 				return;
 
@@ -312,9 +292,6 @@ namespace Blazor.Fluxor
 
 				object nextActionToDequeue = QueuedActions.Peek();
 				
-				//var item                = QueuedActions.Peek();
-				//var nextActionToDequeue = item.action;
-
 				// Only process the action if no middleware vetos it
 				if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))
 				{
@@ -322,66 +299,31 @@ namespace Blazor.Fluxor
 
 					// Notify all features of this action
 					foreach (var featureInstance in FeaturesByName.Values)
+					{
 						IFeatureReceiveDispatchNotificationFromStore(featureInstance, nextActionToDequeue);
+					}
 
 					ExecuteMiddlewareAfterDispatch(nextActionToDequeue);
 
 					TriggerEffects(nextActionToDequeue);
 
-					Console.WriteLine($"DequeueActionsX: {nextActionToDequeue.GetType().Name}");
-					Console.WriteLine($"DequeueActionsX: {TypeReactionItemDict.Count}");
-
-					foreach (var reactionItemX in TypeReactionItemDict)
-					{
-						Console.WriteLine($" => registered reaction type: [{reactionItemX.Key.Name}]");
-					}
-
-					// check if this action (nextActionToDequeue) has an entry in Reactions
-					//if (Reactions.ContainsKey(nextActionToDequeue.GetType()))
+					// handle Reactions
 					var reactionKey = nextActionToDequeue.GetType();
 
-					//if (TypeReactionItemDict.TryGetValue(reactionKey, out List<ReactionItem> reactionItems))
 					if (TypeReactionItemDict.TryGetValue(reactionKey, out ReactionItem reactionItem))
 					{
-						//Console.WriteLine($"- found entry: {reactionKey} | {reactionItems.Count}");
+						// Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+						// execute reaction
+						reactionItem.Action.Invoke(nextActionToDequeue);
 
-						//foreach (var reactionItem in reactionItems)
-						{
-							Console.WriteLine($"-- item: {reactionItem.Action.GetType()}");
-
-							//if (reactionItem is Action<IResultAction<object>> r)
-							if (reactionItem.Action is Action<object> r)	// not really required, should be always true!
-							{
-								Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
-								r.Invoke(nextActionToDequeue);
-							}
-						}
-
+						// clean up dict
 						var removeGuid = reactionItem.Guid;
-
-						//TypeReactionItemDict = TypeReactionItemDict.Where(x => x.Value.Guid != removeGuid)
-						//	.ToDictionary(x => x);
-
 						var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
 						foreach (var removeKey in removeKeys)
 						{
 							TypeReactionItemDict.Remove(removeKey);
 						}
-
-						//TypeReactionItemDict.Remove(reactionKey);
-
-						//remove all items with same guid
-						
 					}
-
-					// test: invoke reaction if present
-					//if (item.reaction != null)
-					//{
-					//	if (item.reaction is Action<IResultAction<object>> r)
-					//	{
-					//		r.Invoke(null);
-					//	}
-					//}
 				}
 
 				// Now remove the processed action from the queue so we can move on to the next (if any)
