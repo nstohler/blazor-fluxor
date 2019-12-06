@@ -267,9 +267,10 @@ namespace Blazor.Fluxor
 
 					// check if this action (nextActionToDequeue) has an entry in Reactions
 					//if (Reactions.ContainsKey(nextActionToDequeue.GetType()))
-					if (Reactions.TryGetValue(nextActionToDequeue.GetType(), out List<Action<object>> reactionItems))
+					var reactionKey = nextActionToDequeue.GetType();
+					if (Reactions.TryGetValue(reactionKey, out List<Action<object>> reactionItems))
 					{
-						Console.WriteLine($"- found entry: {nextActionToDequeue.GetType()} | {reactionItems.Count}");
+						Console.WriteLine($"- found entry: {reactionKey} | {reactionItems.Count}");
 						foreach (var reactionItem in reactionItems)
 						{
 							Console.WriteLine($"-- item: {reactionItem.GetType()}");
@@ -281,6 +282,8 @@ namespace Blazor.Fluxor
 								r.Invoke(nextActionToDequeue);
 							}
 						}
+
+						Reactions.Remove(reactionKey);
 					}
 
 					// test: invoke reaction if present
