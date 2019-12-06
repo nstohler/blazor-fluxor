@@ -6,8 +6,13 @@ using System.Threading.Tasks;
 
 namespace Blazor.Fluxor
 {
-    public interface IResultAction
-    {
+    //public interface IResultAction
+    //{
         
+    //}
+
+    public interface IResultAction<T>
+    {
+
     }
 }

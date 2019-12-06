@@ -18,6 +18,10 @@ namespace Blazor.Fluxor
 		/// </remarks>
 		/// <param name="action">The action to dispatch to all features</param>
 		/// <param name="unknown"></param>
-		void Dispatch(object action, Action<IResultAction> resultAction = null);
+		
+		void Dispatch(object action);
+
+		//void Dispatch<T>(object action, Action<IResultAction<T>> resultAction);
+		void Dispatch<T>(object action, Action<T> resultAction);
 	}
 }

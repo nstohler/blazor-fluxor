@@ -6,7 +6,8 @@ namespace CounterSample.Store.Counter
 	{
 	}
 
-    public class IncrementCounterResultAction : IResultAction
+    public class IncrementCounterResultAction 
+        : IResultAction<IncrementCounterResultAction>
     {
         public string Message { get; set; }
         public int Count { get; set; }

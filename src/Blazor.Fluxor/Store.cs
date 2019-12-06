@@ -30,6 +30,8 @@ namespace Blazor.Fluxor
 		//private readonly Queue<object> QueuedActions = new Queue<object>();
 		private readonly Queue<(object action, object reaction)> QueuedActions = new Queue<(object action, object reaction)>();
 
+		private readonly Dictionary<Type, List<Action<object>>> Reactions = new Dictionary<Type, List<Action<object>>>();
+
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
 		private int BeginMiddlewareChangeCount;
@@ -63,8 +65,14 @@ namespace Blazor.Fluxor
 			FeaturesByName.Add(feature.GetName(), feature);
 		}
 
+		public void Dispatch(object action)
+		{
+			this.Dispatch<object>(action, null);
+		}
+
 		/// <see cref="IDispatcher.Dispatch"/>
-		public void Dispatch(object action, Action<IResultAction> resultAction = null)
+		//public void Dispatch<T>(object action, Action<IResultAction<T>> resultAction)
+		public void Dispatch<T>(object action, Action<T> resultAction)
 		{
 			if (action == null)
 				throw new ArgumentNullException(nameof(action));
@@ -85,7 +93,23 @@ namespace Blazor.Fluxor
 			//	3: The effect immediately dispatches a new action
 			// The Queue ensures it is processed after its triggering action has completed rather than immediately
 			bool wasAlreadyDispatching = QueuedActions.Any();
+			
 			QueuedActions.Enqueue((action, resultAction));
+			
+			if (resultAction != null)
+			{
+				//var key = resultAction.GetType();
+				var key = typeof(T);
+
+				if (!Reactions.ContainsKey(key))
+				{
+					//Reactions.Add(key, new List<object>());
+					Reactions.Add(key, new List<Action<object>>());
+				}
+				//Reactions[key].Add(resultAction);
+				Reactions[key].Add(Convert(resultAction));
+			}
+
 			if (wasAlreadyDispatching)
 				return;
 
@@ -95,6 +119,12 @@ namespace Blazor.Fluxor
 				return;
 
 			DequeueActions();
+		}
+
+		public Action<object> Convert<T>(Action<T> myActionT)
+		{
+			if (myActionT == null) return null;
+			else return new Action<object>(o => myActionT((T)o));
 		}
 
 		/// <see cref="IStore.AddEffect(IEffect)"/>
@@ -227,16 +257,40 @@ namespace Blazor.Fluxor
 
 					TriggerEffects(nextActionToDequeue);
 
-					// test: invoke reaction if present
-					if (item.reaction != null)
-					{
-						var r = item.reaction as Action<IResultAction>;
+					Console.WriteLine($"DequeueActionsX: {nextActionToDequeue.GetType().Name}");
+					Console.WriteLine($"DequeueActionsX: {Reactions.Count}");
 
-						if (r != null)
+					foreach (var reaction in Reactions)
+					{
+						Console.WriteLine($"   [{reaction.Key.Name}]");
+					}
+
+					// check if this action (nextActionToDequeue) has an entry in Reactions
+					//if (Reactions.ContainsKey(nextActionToDequeue.GetType()))
+					if (Reactions.TryGetValue(nextActionToDequeue.GetType(), out List<Action<object>> reactionItems))
+					{
+						Console.WriteLine($"- found entry: {nextActionToDequeue.GetType()} | {reactionItems.Count}");
+						foreach (var reactionItem in reactionItems)
 						{
-							r.Invoke(null);
+							Console.WriteLine($"-- item: {reactionItem.GetType()}");
+							
+							//if (reactionItem is Action<IResultAction<object>> r)
+							if (reactionItem is Action<object> r)
+							{
+								Console.WriteLine($"--- invoke...");
+								r.Invoke(nextActionToDequeue);
+							}
 						}
 					}
+
+					// test: invoke reaction if present
+					//if (item.reaction != null)
+					//{
+					//	if (item.reaction is Action<IResultAction<object>> r)
+					//	{
+					//		r.Invoke(null);
+					//	}
+					//}
 				}
 				// Now remove the processed action from the queue so we can move on to the next (if any)
 				QueuedActions.Dequeue();

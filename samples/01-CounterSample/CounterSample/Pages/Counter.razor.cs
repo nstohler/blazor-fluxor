@@ -17,7 +17,7 @@ namespace CounterSample.Pages
 
         protected void IncrementCount()
         {
-            Dispatcher.Dispatch(new IncrementCounterAction(),
+            Dispatcher.Dispatch<IncrementCounterResultAction>(new IncrementCounterAction(),
                 (resultAction) =>
                 {
                     Console.WriteLine($"Reaction received!");
@@ -27,6 +27,11 @@ namespace CounterSample.Pages
                         Console.WriteLine($"Reaction is {result.Message}");
                     }
                 });
+        }
+
+        protected void IncrementCountNormal()
+        {
+            Dispatcher.Dispatch(new IncrementCounterAction());
         }
     }
 }
