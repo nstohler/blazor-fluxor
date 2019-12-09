@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Blazor.Fluxor;
 using Blazor.Fluxor.Components;
 using CounterSample.Store.Counter;
+using CounterSample.Store.Counter.Increment;
 using Microsoft.AspNetCore.Components;
 
 namespace CounterSample.Pages
