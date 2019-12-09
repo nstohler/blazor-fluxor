@@ -30,6 +30,7 @@ namespace CounterSample.Pages
             //    });
 
             // TODO:
+            Console.WriteLine($"start action!");
 
             Dispatcher.Dispatch(new IncrementCounterAction(),
                 (IncrementCounterResultAction resultAction) =>

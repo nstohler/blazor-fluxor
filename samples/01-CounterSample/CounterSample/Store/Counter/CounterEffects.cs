@@ -20,20 +20,28 @@ namespace CounterSample.Store.Counter
         [EffectMethod]
         public Task HandleAsync(IncrementCounterAction action, IDispatcher dispatcher)
         {
-            if (_counterState.Value.ClickCount % 2 == 0)
+            //if (_counterState.Value.ClickCount % 2 == 0)
+            //{
+            //    dispatcher.Dispatch(new IncrementCounterIsNowEvenResultAction()
+            //    {
+            //        IsEven = true
+            //    });
+            //}
+            //else
             {
-                dispatcher.Dispatch(new IncrementCounterIsNowEvenResultAction()
-                {
-                    IsEven = true
-                });
-            }
-            else
-            {
-                dispatcher.Dispatch(new IncrementCounterResultAction()
-                {
-                    Count   = 123,
-                    Message = $"from {DateTime.Now}"
-                });
+                var reaction = action.CreateResultReaction();
+                reaction.Count   = 123;
+                reaction.Message = $"from {DateTime.Now}";
+
+                dispatcher.Dispatch(reaction);
+
+                // fast deep cloner : clone to?
+
+                //dispatcher.Dispatch(new IncrementCounterResultAction()
+                //{
+                //    Count   = 123,
+                //    Message = $"from {DateTime.Now}"
+                //});
             }
             return Task.CompletedTask;
         }

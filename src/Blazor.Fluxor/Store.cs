@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Blazor.Fluxor.Reactions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -34,7 +36,10 @@ namespace Blazor.Fluxor
 		private readonly Queue<object> QueuedActions = new Queue<object>();
 		
 		// reactions
-		private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
+		//private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
+
+		private readonly Dictionary<string, Dictionary<Type, ReactionItem>> GuidTypeReactionItemDict =
+			new Dictionary<string, Dictionary<Type, ReactionItem>>();
 		
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
@@ -116,12 +121,31 @@ namespace Blazor.Fluxor
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
 
 			// store reactionItems
-			foreach (var reactionItem in reactionItems)
+			
+			Console.WriteLine("configiure reaction...");
+			if (action is ActionWithReactionBase actionWithReaction)
 			{
-				var key = reactionItem.ActionType;
-				if (!TypeReactionItemDict.ContainsKey(key))
+				var guidKey = Guid.NewGuid().ToString();
+				actionWithReaction.ActionGuid = guidKey;
+
+				foreach (var reactionItem in reactionItems)
 				{
-					TypeReactionItemDict.Add(key, reactionItem);
+					if (!GuidTypeReactionItemDict.ContainsKey(guidKey))
+					{
+						GuidTypeReactionItemDict.Add(guidKey, new Dictionary<Type, ReactionItem>());
+					}
+
+					var typeReactionDict = GuidTypeReactionItemDict[guidKey];
+
+					var actionTypeKey = reactionItem.ActionType;
+					if (!typeReactionDict.ContainsKey(actionTypeKey))
+					{
+						typeReactionDict.Add(actionTypeKey, reactionItem);
+					}
+					else
+					{
+						throw new NotImplementedException("no multiple entries of same types");
+					}
 				}
 			}
 			
@@ -308,22 +332,54 @@ namespace Blazor.Fluxor
 					TriggerEffects(nextActionToDequeue);
 
 					// handle Reactions
-					var reactionKey = nextActionToDequeue.GetType();
+					
 
-					if (TypeReactionItemDict.TryGetValue(reactionKey, out ReactionItem reactionItem))
+					if (nextActionToDequeue is ReactionBase reactionGuidKey)
 					{
-						// Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
-						// execute reaction
-						reactionItem.Action.Invoke(nextActionToDequeue);
-
-						// clean up dict
-						var removeGuid = reactionItem.Guid;
-						var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
-						foreach (var removeKey in removeKeys)
+						Console.WriteLine("Reaction here");
+						var guidKey = reactionGuidKey.ParentActionGuid;
+						if (GuidTypeReactionItemDict.TryGetValue(guidKey,
+							out Dictionary<Type, ReactionItem> typeReactionItemDict))
 						{
-							TypeReactionItemDict.Remove(removeKey);
+							Console.WriteLine("found reaction guid");
+							var reactionTypeKey = nextActionToDequeue.GetType();
+
+							if (typeReactionItemDict.TryGetValue(reactionTypeKey, out ReactionItem reactionItem))
+							{
+								Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+								// execute reaction
+								reactionItem.Action.Invoke(nextActionToDequeue);
+
+							//	// clean up dict
+							//	var removeGuid = reactionItem.Guid;
+							//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
+							//	foreach (var removeKey in removeKeys)
+							//	{
+							//		TypeReactionItemDict.Remove(removeKey);
+							//	}
+							}
+							// clean up dict
+
+							GuidTypeReactionItemDict.Remove(guidKey);
 						}
+
+						Console.WriteLine($"GuidTypeReactionItemDict size is {GuidTypeReactionItemDict.Count}");
 					}
+
+					//if (TypeReactionItemDict.TryGetValue(reactionKey, out ReactionItem reactionItem))
+					//{
+					//	// Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+					//	// execute reaction
+					//	reactionItem.Action.Invoke(nextActionToDequeue);
+
+					//	// clean up dict
+					//	var removeGuid = reactionItem.Guid;
+					//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
+					//	foreach (var removeKey in removeKeys)
+					//	{
+					//		TypeReactionItemDict.Remove(removeKey);
+					//	}
+					//}
 				}
 
 				// Now remove the processed action from the queue so we can move on to the next (if any)
