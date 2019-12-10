@@ -37,6 +37,9 @@ namespace Blazor.Fluxor
 
 		private readonly Dictionary<object, IHasReaction> ActionReactionDict = new Dictionary<object, IHasReaction>();
 
+		// TODO: simple list of ReactionEntry
+		private readonly List<ReactionEntry> ActionHistory = new List<ReactionEntry>();
+
 		// reactions
 		//private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
 
@@ -129,15 +132,69 @@ namespace Blazor.Fluxor
 			//QueuedActions.Enqueue((action, resultAction));
 			QueuedActions.Enqueue(action);
 
+			////if(baseAction == null)
+			//{
+			//	ActionHistory.Add(new ReactionEntry() {
+			//		RootAction = action,
+			//		BaseAction = action,
+			//		Action     = action,
+			//		DateTime   = DateTime.UtcNow
+			//	});
+			//}
+
 			// configure reaction in queue
-			if (baseAction != null && baseAction is IHasReaction)
+			if (baseAction is IHasReaction baseActionCasted)
 			{
 				//ActionReactionDict.Add(baseAction, action);
-				ActionReactionDict.Add(action, (IHasReaction)baseAction);
+				ActionReactionDict.Add(action, baseActionCasted);
+
+				//// TODO: check if baseAction is already linked to another baseAction?
+
+				//var rootAction = ActionHistory.LastOrDefault(x => x.RootAction == baseAction) ?? baseAction;
+
+				//ActionHistory.Add(new ReactionEntry() {
+				//	RootAction = rootAction,
+				//	BaseAction = baseActionCasted,
+				//	Action     = action,
+				//	DateTime   = DateTime.UtcNow
+				//});
+
+				//if (rootAction != baseAction)
+				//{
+				//	ActionReactionDict.Add(action, (IHasReaction)rootAction);
+				//}
 			}
 
 			// prepare reaction items
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
+
+			//var root = ActionHistory.LastOrDefault(x => x.)
+
+			if (baseAction == null)
+			{
+				ActionHistory.Add(new ReactionEntry() {
+					//Root          = null,
+					Parent        = null,
+					Action        = action,
+					DateTime      = DateTime.UtcNow,
+					ReactionItems = reactionItems
+				});
+			}
+			else
+			{
+				var parent = ActionHistory.LastOrDefault(x => x.Action == baseAction);
+				//var root   = parent.GetRoot();
+
+				// add current item
+				ActionHistory.Add(new ReactionEntry() {
+					//Root          = root,
+					Parent        = parent,
+					Action        = action,
+					DateTime      = DateTime.UtcNow,
+					ReactionItems = reactionItems
+				});
+			}
+
 
 			// store reactionItems
 
@@ -172,6 +229,8 @@ namespace Blazor.Fluxor
 			// IHasReaction only => ActionTypeReactionItemDict
 			if (action is IHasReaction actionKey)
 			{
+				//Dictionary<Type, ReactionItem> typeReactionDict = null;
+
 				foreach (var reactionItem in reactionItems)
 				{
 					if (!ActionTypeReactionItemDict.ContainsKey(actionKey))
@@ -179,6 +238,7 @@ namespace Blazor.Fluxor
 						ActionTypeReactionItemDict.Add(actionKey, new Dictionary<Type, ReactionItem>());
 					}
 
+					//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
 					var typeReactionDict = ActionTypeReactionItemDict[actionKey];
 
 					var actionTypeKey = reactionItem.ActionType;
@@ -190,7 +250,46 @@ namespace Blazor.Fluxor
 					{
 						throw new NotImplementedException("no multiple entries of same types");
 					}
+
+					//// clone reactionItems for subReactions
+					//Console.WriteLine(
+					//	$"History contains: {string.Join(" | ", ActionHistory.Select(x => x.Action.GetType().ToString()))}");
+
+					//var baseActionEntry = ActionHistory.LastOrDefault(x => x.RootAction == baseAction);
+					//if (baseActionEntry != null && baseActionEntry.RootAction is IHasReaction baseActionKey)
+					//{
+					//	Console.WriteLine($"-- extending dict {baseActionKey.GetType().Name}");
+
+					//	if (!ActionTypeReactionItemDict.ContainsKey(baseActionKey))
+					//	{
+					//		ActionTypeReactionItemDict.Add(baseActionKey, new Dictionary<Type, ReactionItem>());
+					//	}
+
+					//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+					//	var base_TypeReactionDict = ActionTypeReactionItemDict[baseActionKey];
+
+					//	var baseActionTypeKey = reactionItem.ActionType;
+					//	if (!base_TypeReactionDict.ContainsKey(baseActionTypeKey))
+					//	{
+					//		base_TypeReactionDict.Add(actionTypeKey, reactionItem);
+					//	}
+					//	else
+					//	{
+					//		throw new NotImplementedException("no multiple entries of same types");
+					//	}
+
+					//	//if (ActionTypeReactionItemDict.TryGetValue(baseActionKey, out Dictionary<Type, ReactionItem> typeReactionItemDict))
+					//	//{
+					//	//	Console.WriteLine($"-- extending dict");
+					//	//	//ActionTypeReactionItemDict.Add(baseActionKey, typeReactionItemDict);
+					//	//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+					//	//	//typeReactionDict.Add(baseActionKey, typeReactionItemDict);
+					//	//	ActionTypeReactionItemDict[baseActionKey] = typeReactionItemDict;
+					//	//}
+					//}
 				}
+
+				// dump dict?
 			}
 
 			if (wasAlreadyDispatching)
@@ -377,79 +476,117 @@ namespace Blazor.Fluxor
 
 					// handle Reactions
 
+					var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
+					var root = historyEntry?.GetRoot() ?? null;
+
+					if (historyEntry != null && root != null)
+					{
+						var reactionItemsRegisteredInRoot = root.ReactionItems;
+
+						var reactionTypeKey = nextActionToDequeue.GetType();
+
+						var reactionItem =
+							reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
+
+						if (reactionItem != null)
+						{
+							Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+							// execute reaction
+							reactionItem.Action.Invoke(nextActionToDequeue);
+						}
+					}
+
 					// check if ActionReactionDict has an entry
-					if (ActionReactionDict.TryGetValue(nextActionToDequeue, out IHasReaction baseAction))
-					{
-						var actionKey = baseAction;
-						// IHasReaction only => ActionTypeReactionItemDict
-						//if (nextActionToDequeue is IHasReaction actionKey)
-						{
-							Console.WriteLine("ReactionXyz here actionKey");
-							//var guidKey = reactionGuidKey.ParentActionGuid;
-							if (ActionTypeReactionItemDict.TryGetValue(actionKey,
-								out Dictionary<Type, ReactionItem> typeReactionItemDict))
-							{
-								Console.WriteLine("found reaction guid");
-								var reactionTypeKey = nextActionToDequeue.GetType();
+					//if (ActionReactionDict.TryGetValue(nextActionToDequeue, out IHasReaction baseAction))
+					//{
+					//	var actionKey = baseAction;
 
-								if (typeReactionItemDict.TryGetValue(reactionTypeKey, out ReactionItem reactionItem))
-								{
-									Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
-									// execute reaction
-									reactionItem.Action.Invoke(nextActionToDequeue);
+					//	// only use history?
 
-									//	// clean up dict
-									//	var removeGuid = reactionItem.Guid;
-									//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
-									//	foreach (var removeKey in removeKeys)
-									//	{
-									//		TypeReactionItemDict.Remove(removeKey);
-									//	}
-								}
 
-								// clean up dicts
-								ActionTypeReactionItemDict.Remove(actionKey);
-								ActionReactionDict.Remove(nextActionToDequeue);
-							}
+					//	//// IHasReaction only => ActionTypeReactionItemDict
+					//	////if (nextActionToDequeue is IHasReaction actionKey)
+					//	//{
+					//	//	Console.WriteLine("ReactionXyz here actionKey");
+					//	//	//var guidKey = reactionGuidKey.ParentActionGuid;
+					//	//	if (ActionTypeReactionItemDict.TryGetValue(actionKey,
+					//	//		out Dictionary<Type, ReactionItem> typeReactionItemDict))
+					//	//	{
+					//	//		Console.WriteLine("found reaction actionKey");
 
-							Console.WriteLine($"GuidTypeReactionItemDict size is {GuidTypeReactionItemDict.Count}");
-						}
-					}
+					//	//		var actionHistoryEntry =
+					//	//			ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
 
-					// ReactionBase => GuidTypeReactionItemDict
-					if (nextActionToDequeue is ReactionBase reactionGuidKey)
-					{
-						Console.WriteLine("Reaction here");
-						var guidKey = reactionGuidKey.ParentActionGuid;
-						if (GuidTypeReactionItemDict.TryGetValue(guidKey,
-							out Dictionary<Type, ReactionItem> typeReactionItemDict))
-						{
-							Console.WriteLine("found reaction guid");
-							var reactionTypeKey = nextActionToDequeue.GetType();
+					//	//		var reactionTypeKey = nextActionToDequeue.GetType();
 
-							if (typeReactionItemDict.TryGetValue(reactionTypeKey, out ReactionItem reactionItem))
-							{
-								Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
-								// execute reaction
-								reactionItem.Action.Invoke(nextActionToDequeue);
+					//	//		//var reactionTypeKey = actionHistoryEntry?.RootAction.GetType() ?? nextActionToDequeue.GetType();
+					//	//		Console.WriteLine($"found reaction actionKey (root type: {reactionTypeKey?.Name})");
 
-								//	// clean up dict
-								//	var removeGuid = reactionItem.Guid;
-								//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
-								//	foreach (var removeKey in removeKeys)
-								//	{
-								//		TypeReactionItemDict.Remove(removeKey);
-								//	}
-							}
-							// clean up dict
+					//	//		//if (actionHistoryEntry != null)
+					//	//		//{
+					//	//		//	Console.WriteLine($"--- invoke via history entry...{actionHistoryEntry.Action.GetType()}");\
+					//	//		//	// execute reaction
+					//	//		//	actionHistoryEntry.ActionToInvoke.Invoke(nextActionToDequeue);
+					//	//		//}
+					//	//		//else 
+					//	//		if (typeReactionItemDict.TryGetValue(reactionTypeKey, out ReactionItem reactionItem))
+					//	//		{
+					//	//			Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+					//	//			// execute reaction
+					//	//			reactionItem.Action.Invoke(nextActionToDequeue);
 
-							GuidTypeReactionItemDict.Remove(guidKey);
-						}
+					//	//			//	// clean up dict
+					//	//			//	var removeGuid = reactionItem.Guid;
+					//	//			//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
+					//	//			//	foreach (var removeKey in removeKeys)
+					//	//			//	{
+					//	//			//		TypeReactionItemDict.Remove(removeKey);
+					//	//			//	}
+					//	//		}
 
-						Console.WriteLine($"GuidTypeReactionItemDict size is {GuidTypeReactionItemDict.Count}");
-					}
+					//	//		// todo: clean with timeouts?
 
-					
+					//	//		// clean up dicts
+					//	//		//ActionTypeReactionItemDict.Remove(actionKey);
+					//	//		//ActionReactionDict.Remove(nextActionToDequeue);
+					//	//	}
+
+					//	//	Console.WriteLine($"ActionTypeReactionItemDict size is {ActionTypeReactionItemDict.Count}");
+					//	//}
+					//}
+
+					//// ReactionBase => GuidTypeReactionItemDict
+					//if (nextActionToDequeue is ReactionBase reactionGuidKey)
+					//{
+					//	Console.WriteLine("Reaction here");
+					//	var guidKey = reactionGuidKey.ParentActionGuid;
+					//	if (GuidTypeReactionItemDict.TryGetValue(guidKey,
+					//		out Dictionary<Type, ReactionItem> typeReactionItemDict))
+					//	{
+					//		Console.WriteLine("found reaction guid");
+					//		var reactionTypeKey = nextActionToDequeue.GetType();
+
+					//		if (typeReactionItemDict.TryGetValue(reactionTypeKey, out ReactionItem reactionItem))
+					//		{
+					//			Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
+					//			// execute reaction
+					//			reactionItem.Action.Invoke(nextActionToDequeue);
+
+					//			//	// clean up dict
+					//			//	var removeGuid = reactionItem.Guid;
+					//			//	var removeKeys = TypeReactionItemDict.Where(x => x.Value.Guid == removeGuid).Select(x => x.Key).ToList();
+					//			//	foreach (var removeKey in removeKeys)
+					//			//	{
+					//			//		TypeReactionItemDict.Remove(removeKey);
+					//			//	}
+					//		}
+					//		// clean up dict
+
+					//		GuidTypeReactionItemDict.Remove(guidKey);
+					//	}
+
+					//	Console.WriteLine($"GuidTypeReactionItemDict size is {GuidTypeReactionItemDict.Count}");
+					//}
 
 
 					//if (TypeReactionItemDict.TryGetValue(reactionKey, out ReactionItem reactionItem))
