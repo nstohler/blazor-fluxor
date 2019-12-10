@@ -20,7 +20,8 @@ namespace Blazor.Fluxor
 		/// <param name="reaction"></param>
 		/// <param name="action">The action to dispatch to all features</param>
 		/// <param name="unknown"></param>
-		void DispatchReaction(object baseAction, object reaction);
+		/// 
+		void DispatchReaction(object baseAction, TimeSpan timeout, object reaction);
 
 		void Dispatch(object action);
 
@@ -29,7 +30,9 @@ namespace Blazor.Fluxor
 		
 		void Dispatch<T1, T2>(object action, Action<T1> resultAction1, Action<T2> resultAction2);
 		
-		void Dispatch<T1, T2, T3>(object action, object baseAction, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
+		void Dispatch<T1, T2, T3>(object action, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
+
+		void Dispatch<T1, T2, T3>(object action, object baseAction, TimeSpan? timeout, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
 
 
 	}

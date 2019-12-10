@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ensure.That" Version="8.1.2" />
     <PackageReference Include="FastDeepCloner" Version="1.3.0" />
   </ItemGroup>
 

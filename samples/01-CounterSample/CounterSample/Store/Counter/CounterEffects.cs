@@ -47,14 +47,17 @@ namespace CounterSample.Store.Counter
 
                 //dispatcher.Dispatch(reaction);
 
-                //await Task.Delay(500);
+                
                 await Task.Delay(10);
 
-                dispatcher.DispatchReaction(action, new IncrementCounterResultAction()
-                {
-                    Count   = 654,
-                    Message = $"from {DateTime.Now}"
-                });
+                dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
+                    new IncrementCounterResultAction()
+                    {
+                        Count   = 654,
+                        Message = $"from {DateTime.Now}"
+                    });
+
+                
 
                 // fast deep cloner : clone to?
 
@@ -69,15 +72,19 @@ namespace CounterSample.Store.Counter
         }
 
         [EffectMethod]
-        public Task HandleAsync(IncrementCounterResultAction action, IDispatcher dispatcher)
+        public async Task HandleAsync(IncrementCounterResultAction action, IDispatcher dispatcher)
         {
             Console.WriteLine($"EFFECT IncrementCounterResultAction");
-            dispatcher.DispatchReaction(action, new IncrementCounterIsNowEvenResultAction()
-            {
-                IsEven = _counterState.Value.ClickCount % 2 == 0
-            });
 
-            return Task.CompletedTask;
+            await Task.Delay(500);
+
+            dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
+                new IncrementCounterIsNowEvenResultAction()
+                {
+                    IsEven = _counterState.Value.ClickCount % 2 == 0
+                });
+
+            //return Task.CompletedTask;
         }
     }
 }
