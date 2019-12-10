@@ -20,14 +20,18 @@ namespace CounterSample.Store.Counter
         [EffectMethod]
         public Task HandleAsync(IncrementCounterAction action, IDispatcher dispatcher)
         {
-            //if (_counterState.Value.ClickCount % 2 == 0)
-            //{
-            //    dispatcher.Dispatch(new IncrementCounterIsNowEvenResultAction()
-            //    {
-            //        IsEven = true
-            //    });
-            //}
-            //else
+            if (_counterState.Value.ClickCount % 2 == 0)
+            {
+                var reaction = action.CreateIncrementCounterIsNowEvenResultAction();
+                reaction.IsEven   = true;
+
+                dispatcher.Dispatch(reaction);
+
+                // alt, without guid?
+                // TODO: implement this:
+                // dispatcher.Dispatch(reaction, action);
+            }
+            else
             {
                 var reaction = action.CreateResultReaction();
                 reaction.Count   = 123;

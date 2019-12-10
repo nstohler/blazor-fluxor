@@ -9,5 +9,7 @@ namespace Blazor.Fluxor.Reactions
     public abstract class ActionWithReactionBase
     {
 	    public string ActionGuid { get; set; }
+
+		// alternative is to just use the action object reference
     }
 }

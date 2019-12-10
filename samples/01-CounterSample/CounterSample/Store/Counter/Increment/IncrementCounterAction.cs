@@ -15,5 +15,14 @@ namespace CounterSample.Store.Counter.Increment
             };
             return reaction;
         }
-	}
+
+        public IncrementCounterIsNowEvenResultAction CreateIncrementCounterIsNowEvenResultAction()
+        {
+            var reaction = new IncrementCounterIsNowEvenResultAction()
+            {
+                ParentActionGuid = this.ActionGuid
+            };
+            return reaction;
+        }
+    }
 }
