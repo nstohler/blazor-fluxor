@@ -14,6 +14,7 @@ namespace Blazor.Fluxor.Reactions
 		public object             Action        { get; set; }
 		public DateTime           DateTime      { get; set; }
 		public List<ReactionItem> ReactionItems { get; set; }
+		public bool               Invoked       { get; set; }
 
 		//public ReactionEntry GetRoot()
 		//{

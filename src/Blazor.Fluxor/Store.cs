@@ -191,7 +191,7 @@ namespace Blazor.Fluxor
 					Parent        = parent,
 					Action        = action,
 					DateTime      = DateTime.UtcNow,
-					ReactionItems = reactionItems
+					// ReactionItems = reactionItems
 				});
 			}
 
@@ -493,8 +493,21 @@ namespace Blazor.Fluxor
 							Console.WriteLine($"--- invoke...{reactionItem.Action.GetType()}");
 							// execute reaction
 							reactionItem.Action.Invoke(nextActionToDequeue);
+							root.Invoked = true;
 						}
 					}
+					
+					// TODO: better data structure than list?
+
+					// smart clear history entries: 
+					// - all configured items processed
+					// - timeout
+
+					ActionHistory.RemoveAll(x => x.DateTime < DateTime.UtcNow - TimeSpan.FromSeconds(10));
+					ActionHistory.RemoveAll(x => x.Invoked);
+
+					Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
+
 
 					// check if ActionReactionDict has an entry
 					//if (ActionReactionDict.TryGetValue(nextActionToDequeue, out IHasReaction baseAction))
