@@ -35,7 +35,7 @@ namespace Blazor.Fluxor
 
 		private readonly Queue<object> QueuedActions = new Queue<object>();
 
-		private readonly Dictionary<object, IHasReaction> ActionReactionDict = new Dictionary<object, IHasReaction>();
+		//private readonly Dictionary<object, IHasReaction> ActionReactionDict = new Dictionary<object, IHasReaction>();
 
 		// TODO: simple list of ReactionEntry
 		private readonly List<ReactionEntry> ActionHistory = new List<ReactionEntry>();
@@ -43,11 +43,11 @@ namespace Blazor.Fluxor
 		// reactions
 		//private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
 
-		private readonly Dictionary<string, Dictionary<Type, ReactionItem>> GuidTypeReactionItemDict =
-			new Dictionary<string, Dictionary<Type, ReactionItem>>();
+		//private readonly Dictionary<string, Dictionary<Type, ReactionItem>> GuidTypeReactionItemDict =
+		//	new Dictionary<string, Dictionary<Type, ReactionItem>>();
 
-		private readonly Dictionary<IHasReaction, Dictionary<Type, ReactionItem>> ActionTypeReactionItemDict =
-			new Dictionary<IHasReaction, Dictionary<Type, ReactionItem>>();
+		//private readonly Dictionary<IHasReaction, Dictionary<Type, ReactionItem>> ActionTypeReactionItemDict =
+		//	new Dictionary<IHasReaction, Dictionary<Type, ReactionItem>>();
 
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
@@ -143,27 +143,27 @@ namespace Blazor.Fluxor
 			//}
 
 			// configure reaction in queue
-			if (baseAction is IHasReaction baseActionCasted)
-			{
-				//ActionReactionDict.Add(baseAction, action);
-				ActionReactionDict.Add(action, baseActionCasted);
+			//if (baseAction is IHasReaction baseActionCasted)
+			//{
+			//	//ActionReactionDict.Add(baseAction, action);
+			//	ActionReactionDict.Add(action, baseActionCasted);
 
-				//// TODO: check if baseAction is already linked to another baseAction?
+			//	//// TODO: check if baseAction is already linked to another baseAction?
 
-				//var rootAction = ActionHistory.LastOrDefault(x => x.RootAction == baseAction) ?? baseAction;
+			//	//var rootAction = ActionHistory.LastOrDefault(x => x.RootAction == baseAction) ?? baseAction;
 
-				//ActionHistory.Add(new ReactionEntry() {
-				//	RootAction = rootAction,
-				//	BaseAction = baseActionCasted,
-				//	Action     = action,
-				//	DateTime   = DateTime.UtcNow
-				//});
+			//	//ActionHistory.Add(new ReactionEntry() {
+			//	//	RootAction = rootAction,
+			//	//	BaseAction = baseActionCasted,
+			//	//	Action     = action,
+			//	//	DateTime   = DateTime.UtcNow
+			//	//});
 
-				//if (rootAction != baseAction)
-				//{
-				//	ActionReactionDict.Add(action, (IHasReaction)rootAction);
-				//}
-			}
+			//	//if (rootAction != baseAction)
+			//	//{
+			//	//	ActionReactionDict.Add(action, (IHasReaction)rootAction);
+			//	//}
+			//}
 
 			// prepare reaction items
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
@@ -198,99 +198,99 @@ namespace Blazor.Fluxor
 
 			// store reactionItems
 
-			// with guid => GuidTypeReactionItemDict
-			Console.WriteLine("configure reaction...");
-			if (action is ActionWithReactionBase actionWithReaction)
-			{
-				var guidKey = Guid.NewGuid().ToString();
-				actionWithReaction.ActionGuid = guidKey;
+			//// with guid => GuidTypeReactionItemDict
+			//Console.WriteLine("configure reaction...");
+			//if (action is ActionWithReactionBase actionWithReaction)
+			//{
+			//	var guidKey = Guid.NewGuid().ToString();
+			//	actionWithReaction.ActionGuid = guidKey;
 
-				foreach (var reactionItem in reactionItems)
-				{
-					if (!GuidTypeReactionItemDict.ContainsKey(guidKey))
-					{
-						GuidTypeReactionItemDict.Add(guidKey, new Dictionary<Type, ReactionItem>());
-					}
+			//	foreach (var reactionItem in reactionItems)
+			//	{
+			//		if (!GuidTypeReactionItemDict.ContainsKey(guidKey))
+			//		{
+			//			GuidTypeReactionItemDict.Add(guidKey, new Dictionary<Type, ReactionItem>());
+			//		}
 
-					var typeReactionDict = GuidTypeReactionItemDict[guidKey];
+			//		var typeReactionDict = GuidTypeReactionItemDict[guidKey];
 
-					var actionTypeKey = reactionItem.ActionType;
-					if (!typeReactionDict.ContainsKey(actionTypeKey))
-					{
-						typeReactionDict.Add(actionTypeKey, reactionItem);
-					}
-					else
-					{
-						throw new NotImplementedException("no multiple entries of same types");
-					}
-				}
-			}
+			//		var actionTypeKey = reactionItem.ActionType;
+			//		if (!typeReactionDict.ContainsKey(actionTypeKey))
+			//		{
+			//			typeReactionDict.Add(actionTypeKey, reactionItem);
+			//		}
+			//		else
+			//		{
+			//			throw new NotImplementedException("no multiple entries of same types");
+			//		}
+			//	}
+			//}
 
-			// IHasReaction only => ActionTypeReactionItemDict
-			if (action is IHasReaction actionKey)
-			{
-				//Dictionary<Type, ReactionItem> typeReactionDict = null;
+			//// IHasReaction only => ActionTypeReactionItemDict
+			//if (action is IHasReaction actionKey)
+			//{
+			//	//Dictionary<Type, ReactionItem> typeReactionDict = null;
 
-				foreach (var reactionItem in reactionItems)
-				{
-					if (!ActionTypeReactionItemDict.ContainsKey(actionKey))
-					{
-						ActionTypeReactionItemDict.Add(actionKey, new Dictionary<Type, ReactionItem>());
-					}
+			//	foreach (var reactionItem in reactionItems)
+			//	{
+			//		if (!ActionTypeReactionItemDict.ContainsKey(actionKey))
+			//		{
+			//			ActionTypeReactionItemDict.Add(actionKey, new Dictionary<Type, ReactionItem>());
+			//		}
 
-					//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
-					var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+			//		//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+			//		var typeReactionDict = ActionTypeReactionItemDict[actionKey];
 
-					var actionTypeKey = reactionItem.ActionType;
-					if (!typeReactionDict.ContainsKey(actionTypeKey))
-					{
-						typeReactionDict.Add(actionTypeKey, reactionItem);
-					}
-					else
-					{
-						throw new NotImplementedException("no multiple entries of same types");
-					}
+			//		var actionTypeKey = reactionItem.ActionType;
+			//		if (!typeReactionDict.ContainsKey(actionTypeKey))
+			//		{
+			//			typeReactionDict.Add(actionTypeKey, reactionItem);
+			//		}
+			//		else
+			//		{
+			//			throw new NotImplementedException("no multiple entries of same types");
+			//		}
 
-					//// clone reactionItems for subReactions
-					//Console.WriteLine(
-					//	$"History contains: {string.Join(" | ", ActionHistory.Select(x => x.Action.GetType().ToString()))}");
+			//		//// clone reactionItems for subReactions
+			//		//Console.WriteLine(
+			//		//	$"History contains: {string.Join(" | ", ActionHistory.Select(x => x.Action.GetType().ToString()))}");
 
-					//var baseActionEntry = ActionHistory.LastOrDefault(x => x.RootAction == baseAction);
-					//if (baseActionEntry != null && baseActionEntry.RootAction is IHasReaction baseActionKey)
-					//{
-					//	Console.WriteLine($"-- extending dict {baseActionKey.GetType().Name}");
+			//		//var baseActionEntry = ActionHistory.LastOrDefault(x => x.RootAction == baseAction);
+			//		//if (baseActionEntry != null && baseActionEntry.RootAction is IHasReaction baseActionKey)
+			//		//{
+			//		//	Console.WriteLine($"-- extending dict {baseActionKey.GetType().Name}");
 
-					//	if (!ActionTypeReactionItemDict.ContainsKey(baseActionKey))
-					//	{
-					//		ActionTypeReactionItemDict.Add(baseActionKey, new Dictionary<Type, ReactionItem>());
-					//	}
+			//		//	if (!ActionTypeReactionItemDict.ContainsKey(baseActionKey))
+			//		//	{
+			//		//		ActionTypeReactionItemDict.Add(baseActionKey, new Dictionary<Type, ReactionItem>());
+			//		//	}
 
-					//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
-					//	var base_TypeReactionDict = ActionTypeReactionItemDict[baseActionKey];
+			//		//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+			//		//	var base_TypeReactionDict = ActionTypeReactionItemDict[baseActionKey];
 
-					//	var baseActionTypeKey = reactionItem.ActionType;
-					//	if (!base_TypeReactionDict.ContainsKey(baseActionTypeKey))
-					//	{
-					//		base_TypeReactionDict.Add(actionTypeKey, reactionItem);
-					//	}
-					//	else
-					//	{
-					//		throw new NotImplementedException("no multiple entries of same types");
-					//	}
+			//		//	var baseActionTypeKey = reactionItem.ActionType;
+			//		//	if (!base_TypeReactionDict.ContainsKey(baseActionTypeKey))
+			//		//	{
+			//		//		base_TypeReactionDict.Add(actionTypeKey, reactionItem);
+			//		//	}
+			//		//	else
+			//		//	{
+			//		//		throw new NotImplementedException("no multiple entries of same types");
+			//		//	}
 
-					//	//if (ActionTypeReactionItemDict.TryGetValue(baseActionKey, out Dictionary<Type, ReactionItem> typeReactionItemDict))
-					//	//{
-					//	//	Console.WriteLine($"-- extending dict");
-					//	//	//ActionTypeReactionItemDict.Add(baseActionKey, typeReactionItemDict);
-					//	//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
-					//	//	//typeReactionDict.Add(baseActionKey, typeReactionItemDict);
-					//	//	ActionTypeReactionItemDict[baseActionKey] = typeReactionItemDict;
-					//	//}
-					//}
-				}
+			//		//	//if (ActionTypeReactionItemDict.TryGetValue(baseActionKey, out Dictionary<Type, ReactionItem> typeReactionItemDict))
+			//		//	//{
+			//		//	//	Console.WriteLine($"-- extending dict");
+			//		//	//	//ActionTypeReactionItemDict.Add(baseActionKey, typeReactionItemDict);
+			//		//	//	//var typeReactionDict = ActionTypeReactionItemDict[actionKey];
+			//		//	//	//typeReactionDict.Add(baseActionKey, typeReactionItemDict);
+			//		//	//	ActionTypeReactionItemDict[baseActionKey] = typeReactionItemDict;
+			//		//	//}
+			//		//}
+			//	}
 
-				// dump dict?
-			}
+			//	// dump dict?
+			//}
 
 			if (wasAlreadyDispatching)
 				return;
