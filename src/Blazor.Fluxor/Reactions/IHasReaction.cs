@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace Blazor.Fluxor.Reactions
 {
-    public interface IHasReaction
-    {
+    //public interface IHasReaction
+    //{
         
-    }
+    //}
 }

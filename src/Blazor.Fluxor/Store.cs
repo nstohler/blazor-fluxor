@@ -71,7 +71,7 @@ namespace Blazor.Fluxor
 			IFeatureReceiveDispatchNotificationFromStore = (Action<IFeature, object>)
 				Delegate.CreateDelegate(typeof(Action<IFeature, object>), dispatchNotifictionFromStoreMethodInfo);
 
-			Dispatch(new StoreInitializedAction());
+			Dispatch(new StoreInitializedAction(), TimeSpan.FromSeconds(3));
 		}
 
 		/// <see cref="IStore.AddFeature(IFeature)"/>
@@ -91,25 +91,30 @@ namespace Blazor.Fluxor
 
 		public void Dispatch(object action)
 		{
-			Dispatch<object, object, object>(action, null, null, null, null, null);
+			Dispatch<object, object, object>(action, null, TimeSpan.FromSeconds(20), null, null, null);
+		}
+
+		public void Dispatch(object action, TimeSpan? timeout)
+		{
+			Dispatch<object, object, object>(action, null, timeout, null, null, null);
 		}
 
 		/// <see cref="IDispatcher.Dispatch"/>
 		//public void Dispatch<T>(object action, Action<IResultAction<T>> resultAction)
-		public void Dispatch<T>(object action, Action<T> resultAction)
+		public void Dispatch<T>(object action, TimeSpan? timeout, Action<T> resultAction)
 		{
-			Dispatch<T, object, object>(action, null, null, resultAction, null, null);
+			Dispatch<T, object, object>(action, null, timeout, resultAction, null, null);
 		}
 
-		public void Dispatch<T1, T2>(object action, Action<T1> resultAction1, Action<T2> resultAction2)
+		public void Dispatch<T1, T2>(object action, TimeSpan? timeout, Action<T1> resultAction1, Action<T2> resultAction2)
 		{
-			Dispatch<T1, T2, object>(action, null, null, resultAction1, resultAction2, null);
+			Dispatch<T1, T2, object>(action, null, timeout, resultAction1, resultAction2, null);
 		}
 
-		public void Dispatch<T1, T2, T3>(object action,
+		public void Dispatch<T1, T2, T3>(object action, TimeSpan? timeout,
 			Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3)
 		{
-			Dispatch<T1, T2, T3>(action, null, null, resultAction1, resultAction2, resultAction3);
+			Dispatch<T1, T2, T3>(action, null, timeout, resultAction1, resultAction2, resultAction3);
 		}
 
 		public void Dispatch<T1, T2, T3>(object action,
@@ -143,8 +148,11 @@ namespace Blazor.Fluxor
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
 
 			//var root = ActionHistory.LastOrDefault(x => x.)
-			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(2));
+			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));	// default 30 seconds 
 			Console.WriteLine($"set expirationDate to {expirationDate}");
+
+			// TODO:
+			// TODO/BUG: check if reactionItems effectively contain calls that match, otherwise do not register those calls...
 
 			if (baseAction == null)
 			{
@@ -399,10 +407,10 @@ namespace Blazor.Fluxor
 
 					Console.WriteLine($"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
 
-					ActionHistory.ForEach(x =>
-					{
-						Console.WriteLine($"=> expdate: {x.ExpirationDate}");
-					});
+					//ActionHistory.ForEach(x =>
+					//{
+					//	Console.WriteLine($"=> expdate: {x.ExpirationDate}");
+					//});
 
 
 					//ActionHistory.RemoveAll(x => x.CreateDate < DateTime.UtcNow - TimeSpan.FromSeconds(10));

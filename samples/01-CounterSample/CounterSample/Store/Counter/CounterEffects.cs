@@ -46,8 +46,8 @@ namespace CounterSample.Store.Counter
                 //reaction.Message = $"from {DateTime.Now}";
 
                 //dispatcher.Dispatch(reaction);
+                Console.WriteLine($"EFFECT IncrementCounterAction");
 
-                
                 await Task.Delay(10);
 
                 dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
@@ -77,6 +77,11 @@ namespace CounterSample.Store.Counter
             Console.WriteLine($"EFFECT IncrementCounterResultAction");
 
             await Task.Delay(500);
+
+
+            // BUG: if the following is enabled/dispatched,
+            //      BUT there is no configuration in the original call from the blazor component
+            //      (no (IncrementCounterIsNowEvenResultAction resultAction) => {}), the previous items dont get called correctly!
 
             dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
                 new IncrementCounterIsNowEvenResultAction()
