@@ -16,9 +16,12 @@ namespace Blazor.Fluxor
 		/// The return type is a Task because the store may also dispatch long-running side effects from 
 		/// effects (<see cref="IEffect"/>).
 		/// </remarks>
+		/// <param name="baseAction"></param>
+		/// <param name="reaction"></param>
 		/// <param name="action">The action to dispatch to all features</param>
 		/// <param name="unknown"></param>
-		
+		void DispatchReaction(object baseAction, object reaction);
+
 		void Dispatch(object action);
 
 		//void Dispatch<T>(object action, Action<IResultAction<T>> resultAction);
@@ -26,7 +29,7 @@ namespace Blazor.Fluxor
 		
 		void Dispatch<T1, T2>(object action, Action<T1> resultAction1, Action<T2> resultAction2);
 		
-		void Dispatch<T1, T2, T3>(object action, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
+		void Dispatch<T1, T2, T3>(object action, object baseAction, Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3);
 
 
 	}

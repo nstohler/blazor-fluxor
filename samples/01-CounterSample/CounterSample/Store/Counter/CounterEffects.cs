@@ -22,22 +22,36 @@ namespace CounterSample.Store.Counter
         {
             if (_counterState.Value.ClickCount % 2 == 0)
             {
-                var reaction = action.CreateIncrementCounterIsNowEvenResultAction();
-                reaction.IsEven   = true;
+                //var reaction = action.CreateIncrementCounterIsNowEvenResultAction();
+                //reaction.IsEven   = true;
 
-                dispatcher.Dispatch(reaction);
+                //dispatcher.Dispatch(reaction);
+
+                dispatcher.DispatchReaction(action, new IncrementCounterIsNowEvenResultAction()
+                {
+                    IsEven = true
+                });
 
                 // alt, without guid?
                 // TODO: implement this:
                 // dispatcher.Dispatch(reaction, action);
+                // OR:
+
+                // dispatcher.DispatchReaction(reaction, action);
             }
             else
             {
-                var reaction = action.CreateResultReaction();
-                reaction.Count   = 123;
-                reaction.Message = $"from {DateTime.Now}";
+                //var reaction = action.CreateResultReaction();
+                //reaction.Count   = 123;
+                //reaction.Message = $"from {DateTime.Now}";
 
-                dispatcher.Dispatch(reaction);
+                //dispatcher.Dispatch(reaction);
+
+                dispatcher.DispatchReaction(action, new IncrementCounterResultAction()
+                {
+                    Count   = 654,
+                    Message = $"from {DateTime.Now}"
+                });
 
                 // fast deep cloner : clone to?
 
@@ -47,6 +61,7 @@ namespace CounterSample.Store.Counter
                 //    Message = $"from {DateTime.Now}"
                 //});
             }
+
             return Task.CompletedTask;
         }
     }
