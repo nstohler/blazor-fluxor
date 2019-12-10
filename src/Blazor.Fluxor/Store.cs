@@ -158,8 +158,8 @@ namespace Blazor.Fluxor
 			else
 			{
 				var parent              = ActionHistory.LastOrDefault(x => x.Action == baseAction);
-				var root                = parent.GetRoot();
-				var clonedReactionItems = parent.ReactionItems.Select(x => x.Clone()).ToList();
+				//var root                = parent.GetRoot();
+				//var clonedReactionItems = parent.ReactionItems.Select(x => x.Clone()).ToList();
 
 				// var clonedReactionItems = FastDeepCloner.DeepCloner.Clone(parent.ReactionItems);
 
@@ -168,8 +168,8 @@ namespace Blazor.Fluxor
 					Parent         = parent,
 					Action         = action,
 					ExpirationDate = expirationDate,
-					ReactionItems  = clonedReactionItems
-					// ReactionItems = reactionItems // => only needed in root?
+					// ReactionItems  = clonedReactionItems
+					// ReactionItems = reactionItems // => only store in root actionHistoryItem?
 				});
 			}
 
@@ -396,9 +396,6 @@ namespace Blazor.Fluxor
 					// smart clear history entries: 
 					// - all configured items processed
 					// - timeout
-
-
-
 
 					Console.WriteLine($"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
 

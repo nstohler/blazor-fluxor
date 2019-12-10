@@ -24,9 +24,11 @@ namespace Blazor.Fluxor.Reactions
 		//		return this;
 		//	}
 		//}
+		public bool IsRoot() => this.Parent == null;
+
 		public ActionHistoryItem GetRoot()
 		{
-			if (Parent == null)
+			if (IsRoot())
 			{
 				return this;
 			}
@@ -39,7 +41,7 @@ namespace Blazor.Fluxor.Reactions
 			var results = new List<ActionHistoryItem>() {
 				this
 			};
-			if (Parent != null)
+			if (!IsRoot())
 			{
 				results.AddRange(Parent.GetAncestors());
 			}

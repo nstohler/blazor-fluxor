@@ -2,7 +2,8 @@
 
 namespace CounterSample.Store.Counter.Increment
 {
-    public class IncrementCounterAction : IHasReaction
+    public class IncrementCounterAction 
+    //public class IncrementCounterAction : IHasReaction
     {
         // - store action GUID here, 
         // - provide option to create Reaction action only through this action?

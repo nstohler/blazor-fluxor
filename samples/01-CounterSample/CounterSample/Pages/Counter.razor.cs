@@ -32,6 +32,10 @@ namespace CounterSample.Pages
             // TODO:
             Console.WriteLine($"start action!");
 
+            //// default action dispatch
+            //Dispatcher.Dispatch(new IncrementCounterAction());
+
+            // action with 2 reactions 
             Dispatcher.Dispatch(new IncrementCounterAction(),
                 (IncrementCounterResultAction resultAction) =>
                 {
