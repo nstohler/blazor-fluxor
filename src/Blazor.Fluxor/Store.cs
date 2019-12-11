@@ -37,19 +37,10 @@ namespace Blazor.Fluxor
 
 		private readonly Queue<object> QueuedActions = new Queue<object>();
 
-		//private readonly Dictionary<object, IHasReaction> ActionReactionDict = new Dictionary<object, IHasReaction>();
-
-		// TODO: simple list of ActionChainItem
 		private readonly List<ActionChainItem> ActionChains = new List<ActionChainItem>();
 
-		// reactions
-		//private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
-
-		//private readonly Dictionary<string, Dictionary<Type, ReactionItem>> GuidTypeReactionItemDict =
-		//	new Dictionary<string, Dictionary<Type, ReactionItem>>();
-
-		//private readonly Dictionary<IHasReaction, Dictionary<Type, ReactionItem>> ActionTypeReactionItemDict =
-		//	new Dictionary<IHasReaction, Dictionary<Type, ReactionItem>>();
+		private readonly Dictionary<object, ActionChainItem> ActionActionChainDict =
+			new Dictionary<object, ActionChainItem>();
 
 		private readonly TaskCompletionSource<bool> InitializedCompletionSource = new TaskCompletionSource<bool>();
 
@@ -157,50 +148,6 @@ namespace Blazor.Fluxor
 				return;
 
 			DequeueActions();
-		}
-
-		private void QueueReactions<T1, T2, T3>(object action, object baseAction, TimeSpan? timeout,
-			Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3)
-		{
-			// prepare reaction items
-			var reactionItems  = GetReactionItems(resultAction1, resultAction2, resultAction3);
-			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30)); // default 30 seconds (?)
-
-			if (baseAction == null)
-			{
-				//Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
-				ActionChains.Add(new ActionChainItem() {
-					Action         = action,
-					Parent         = null, // is root
-					ExpirationDate = expirationDate,
-					ReactionItems  = reactionItems
-				});
-			}
-			else
-			{
-				//Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
-				var parent = ActionChains.LastOrDefault(x => x.Action == baseAction);
-
-				//Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
-
-				// validate user intent
-				var rootReactionItems = parent?.GetRoot().ReactionItems;
-				if (parent == null || !rootReactionItems.Any() ||
-				    rootReactionItems.All(x => x.ActionType != action.GetType()))
-				{
-					// output warning, verify library user intent
-					Console.WriteLine(
-						$"WARNING: There was no pre-registered reaction-chain for action => reaction '{baseAction.GetType().Name} => {action.GetType().Name}' (via DispatchReaction?)");
-				}
-
-				// add current item
-				ActionChains.Add(new ActionChainItem() {
-					Action         = action,
-					Parent         = parent, // might still be null
-					ExpirationDate = expirationDate,
-					// ReactionItems = xxx // => do NOT set! only store/access in root actionChainItem!
-				});
-			}
 		}
 
 		private List<ReactionItem> GetReactionItems<T1, T2, T3>(Action<T1> resultAction1, Action<T2> resultAction2,
@@ -394,6 +341,55 @@ namespace Blazor.Fluxor
 			}
 		}
 
+		private void QueueReactions<T1, T2, T3>(object action, object baseAction, TimeSpan? timeout,
+			Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3)
+		{
+			// prepare reaction items
+			var reactionItems  = GetReactionItems(resultAction1, resultAction2, resultAction3);
+			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30)); // default 30 seconds (?)
+
+			if (baseAction == null)
+			{
+				//Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
+				var rootChainItem = new ActionChainItem() {
+					Action         = action,
+					Parent         = null, // null is root
+					ExpirationDate = expirationDate,
+					ReactionItems  = reactionItems
+				};
+				ActionChains.Add(rootChainItem);
+				ActionActionChainDict.Add(action, rootChainItem);
+			}
+			else
+			{
+				//Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
+				//var parent = ActionChains.LastOrDefault(x => x.Action == baseAction);
+				var parentChainItem = ActionActionChainDict.TryGetValue(baseAction, out var actionChainItem) ? actionChainItem : null;
+
+				//Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
+
+				// validate user intent
+				var rootReactionItems = parentChainItem?.GetRoot().ReactionItems;
+				if (parentChainItem == null || !rootReactionItems.Any() ||
+				    rootReactionItems.All(x => x.ActionType != action.GetType()))
+				{
+					// output warning, verify library user intent
+					Console.WriteLine(
+						$"WARNING: There was no pre-registered reaction-chain for action => reaction '{baseAction.GetType().Name} => {action.GetType().Name}' (via DispatchReaction?)");
+				}
+
+				var subChainItem = new ActionChainItem() {
+					Action         = action,
+					Parent         = parentChainItem, // might still be null
+					ExpirationDate = expirationDate,
+					// ReactionItems = xxx // => do NOT set! only store/access in root actionChainItem!
+				};
+				// add current item
+				ActionChains.Add(subChainItem);
+				ActionActionChainDict.Add(action, subChainItem);
+			}
+		}
+
 		private void TriggerReactions(object nextActionToDequeue)
 		{
 			// handle Reactions
@@ -426,11 +422,28 @@ namespace Blazor.Fluxor
 						// remove root and all children
 						var ancestors = actionChainItem.GetAncestors();
 						ActionChains.RemoveAll(x => ancestors.Contains(x));
+						
+						foreach (var chainItem in ancestors)
+						{
+							Console.WriteLine($"ActionActionChainDict remove INVOKED item: {chainItem.Action.GetType().Name}");
+							ActionActionChainDict.Remove(chainItem.Action);
+						}
 					}
 				}
-			}
+			}  
+
+			var expiredActions = ActionChains.Where(x => x.ExpirationDate < DateTime.UtcNow).ToList();
 
 			ActionChains.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
+
+			// process dict
+			foreach (var expiredAction in expiredActions)
+			{
+				Console.WriteLine($"ActionActionChainDict remove EXPIRED item: {expiredAction.Action.GetType().Name}");
+				ActionActionChainDict.Remove(expiredAction.Action);
+			}
+			Console.WriteLine($"ActionChains size: {ActionChains.Count}");
+			Console.WriteLine($"ActionActionChainDict size: {ActionActionChainDict.Count}");
 		}
 	}
 }
