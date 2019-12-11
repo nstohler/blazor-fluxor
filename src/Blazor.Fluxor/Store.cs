@@ -360,7 +360,7 @@ namespace Blazor.Fluxor
 					// a non-empty queue as an indication that a Dispatch() loop is already in progress
 
 					object nextActionToDequeue = QueuedActions.Peek();
-					Console.WriteLine($"==>>> DequeuAction start loop for {nextActionToDequeue.GetType().Name}");
+					//Console.WriteLine($"==>>> DequeuAction start loop for {nextActionToDequeue.GetType().Name}");
 
 					// Only process the action if no middleware vetos it
 					if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))

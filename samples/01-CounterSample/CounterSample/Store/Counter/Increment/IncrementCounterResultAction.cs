@@ -2,9 +2,7 @@
 
 namespace CounterSample.Store.Counter.Increment
 {
-    public class IncrementCounterResultAction // : IHasReaction
-    //: ReactionBase
-    //: IResultAction<IncrementCounterResultAction>
+    public class IncrementCounterResultAction
     {
         public string Message { get; set; }
         public int    Count   { get; set; }

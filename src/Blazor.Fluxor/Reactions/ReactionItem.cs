@@ -7,7 +7,6 @@ namespace Blazor.Fluxor.Reactions
 		public Action<object> Action     { get; set; }
 		public Type           ActionType { get; set; }
 
-		//public Guid     Guid      { get; set; }
 		public DateTime TimeStamp { get; set; }
 		public bool     Invoked   { get; set; }
 
@@ -16,7 +15,7 @@ namespace Blazor.Fluxor.Reactions
 			return new ReactionItem() {
 				Action     = this.Action,
 				ActionType = this.ActionType,
-				TimeStamp  = TimeStamp,
+				TimeStamp  = TimeStamp, 
 			};
 		}
 	}

@@ -53,17 +53,14 @@ namespace CounterSample.Store.Counter
                 dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
                     new IncrementCounterResultAction()
                     {
-                        Count   = 654,
+                        Count = 654,
                         Message = $"from {DateTime.Now}"
                     });
 
-                
-
-                // fast deep cloner : clone to?
 
                 //dispatcher.Dispatch(new IncrementCounterResultAction()
                 //{
-                //    Count   = 123,
+                //    Count = 123,
                 //    Message = $"from {DateTime.Now}"
                 //});
             }

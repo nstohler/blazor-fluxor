@@ -8,22 +8,13 @@ namespace Blazor.Fluxor.Reactions
 {
 	public class ActionHistoryItem
 	{
-		//public ActionHistoryItem Root { get; set; }
 		public ActionHistoryItem Parent { get; set; }
 
 		public object   Action         { get; set; }
 		public DateTime ExpirationDate     { get; set; }
 
 		public List<ReactionItem> ReactionItems { get; set; } = new List<ReactionItem>();
-		// public bool               Invoked       { get; set; }
 
-		//public ActionHistoryItem GetRoot()
-		//{
-		//	if (this.Root != null)
-		//	{
-		//		return this;
-		//	}
-		//}
 		public bool IsRoot() => this.Parent == null;
 
 		public ActionHistoryItem GetRoot()
