@@ -83,11 +83,20 @@ namespace CounterSample.Store.Counter
             //      BUT there is no configuration in the original call from the blazor component
             //      (no (IncrementCounterIsNowEvenResultAction resultAction) => {}), the previous items dont get called correctly!
 
+            // => check if registered, otherwise just dispatch normally!
+
             dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
                 new IncrementCounterIsNowEvenResultAction()
                 {
                     IsEven = _counterState.Value.ClickCount % 2 == 0
                 });
+
+            //// this works:
+            //dispatcher.Dispatch(
+            //    new IncrementCounterIsNowEvenResultAction()
+            //    {
+            //        IsEven = _counterState.Value.ClickCount % 2 == 0
+            //    });
 
             //return Task.CompletedTask;
         }

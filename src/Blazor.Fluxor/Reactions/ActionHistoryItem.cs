@@ -14,7 +14,7 @@ namespace Blazor.Fluxor.Reactions
 		public object   Action         { get; set; }
 		public DateTime ExpirationDate     { get; set; }
 
-		public List<ReactionItem> ReactionItems { get; set; }
+		public List<ReactionItem> ReactionItems { get; set; } = new List<ReactionItem>();
 		// public bool               Invoked       { get; set; }
 
 		//public ActionHistoryItem GetRoot()

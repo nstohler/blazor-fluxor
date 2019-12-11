@@ -140,6 +140,7 @@ namespace Blazor.Fluxor
 			//	3: The effect immediately dispatches a new action
 			// The Queue ensures it is processed after its triggering action has completed rather than immediately
 			bool wasAlreadyDispatching = QueuedActions.Any();
+			Console.WriteLine($"dispatch...wasAlreadyDispatching: {wasAlreadyDispatching}");
 
 			//QueuedActions.Enqueue((action, resultAction));
 			QueuedActions.Enqueue(action);
@@ -156,6 +157,7 @@ namespace Blazor.Fluxor
 
 			if (baseAction == null)
 			{
+				Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
 				ActionHistory.Add(new ActionHistoryItem() {
 					Parent         = null,
 					Action         = action,
@@ -165,6 +167,7 @@ namespace Blazor.Fluxor
 			}
 			else
 			{
+				Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
 				var parent              = ActionHistory.LastOrDefault(x => x.Action == baseAction);
 				//var root                = parent.GetRoot();
 				//var clonedReactionItems = parent.ReactionItems.Select(x => x.Clone()).ToList();
@@ -340,88 +343,102 @@ namespace Blazor.Fluxor
 
 		private void DequeueActions()
 		{
-			while (QueuedActions.Any())
+			try
 			{
-				// We want the next action but we won't dequeue it because we use
-				// a non-empty queue as an indication that a Dispatch() loop is already in progress
-
-				object nextActionToDequeue = QueuedActions.Peek();
-
-				// Only process the action if no middleware vetos it
-				if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))
+				while (QueuedActions.Any())
 				{
-					ExecuteMiddlewareBeforeDispatch(nextActionToDequeue);
+					// We want the next action but we won't dequeue it because we use
+					// a non-empty queue as an indication that a Dispatch() loop is already in progress
 
-					// Notify all features of this action
-					foreach (var featureInstance in FeaturesByName.Values)
+					object nextActionToDequeue = QueuedActions.Peek();
+					Console.WriteLine($"==>>> DequeuAction start loop for {nextActionToDequeue.GetType().Name}");
+
+					// Only process the action if no middleware vetos it
+					if (Middlewares.All(x => x.MayDispatchAction(nextActionToDequeue)))
 					{
-						IFeatureReceiveDispatchNotificationFromStore(featureInstance, nextActionToDequeue);
-					}
+						ExecuteMiddlewareBeforeDispatch(nextActionToDequeue);
 
-					ExecuteMiddlewareAfterDispatch(nextActionToDequeue);
-
-					TriggerEffects(nextActionToDequeue);
-
-					// handle Reactions
-
-					var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
-					var root         = historyEntry?.GetRoot() ?? null;
-
-					if (historyEntry != null && root != null)
-					//if (historyEntry != null)
-					{
-						var reactionItemsRegisteredInRoot = root.ReactionItems;
-						//var reactionItemsRegisteredInRoot = historyEntry.ReactionItems;
-
-						var reactionTypeKey = nextActionToDequeue.GetType();
-
-						var reactionItem =
-							reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
-
-						if (reactionItem != null && !reactionItem.Invoked)
+						// Notify all features of this action
+						foreach (var featureInstance in FeaturesByName.Values)
 						{
-							Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
-							// execute reaction
-							reactionItem.Action.Invoke(nextActionToDequeue);
-							reactionItem.Invoked = true;
-
-							// root.Invoked = true;
+							IFeatureReceiveDispatchNotificationFromStore(featureInstance, nextActionToDequeue);
 						}
 
-						// ALL registered reactions invoked (in root?)
-						if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
+						ExecuteMiddlewareAfterDispatch(nextActionToDequeue);
+
+						TriggerEffects(nextActionToDequeue);
+
+						// handle Reactions
+
+						var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
+						var root         = historyEntry?.GetRoot() ?? null;
+
+						if (historyEntry != null && root != null)
+							//if (historyEntry != null)
 						{
-							// remove root and all children
-							var ancestors = historyEntry.GetAncestors();
-							Console.WriteLine($" >>> remove invoked ancestors: {ancestors.Count}");
-							ActionHistory.RemoveAll(x => ancestors.Contains(x));
-							Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
+							var reactionItemsRegisteredInRoot = root.ReactionItems;
+							//var reactionItemsRegisteredInRoot = historyEntry.ReactionItems;
+
+							var reactionTypeKey = nextActionToDequeue.GetType();
+
+							var reactionItem =
+								reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
+
+							if (reactionItem != null && !reactionItem.Invoked)
+							{
+								Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
+								// execute reaction
+								reactionItem.Action.Invoke(nextActionToDequeue);
+								reactionItem.Invoked = true;
+
+								// root.Invoked = true;
+							}
+
+							// ALL registered reactions invoked (in root?)
+							if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
+							{
+								// remove root and all children
+								var ancestors = historyEntry.GetAncestors();
+								Console.WriteLine($" >>> remove invoked ancestors: {ancestors.Count}");
+								ActionHistory.RemoveAll(x => ancestors.Contains(x));
+								Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
+							}
 						}
+
+						// TODO: better data structure than list?
+
+						// smart clear history entries: 
+						// - all configured items processed
+						// - timeout
+
+						Console.WriteLine(
+							$"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
+
+						//ActionHistory.ForEach(x =>
+						//{
+						//	Console.WriteLine($"=> expdate: {x.ExpirationDate}");
+						//});
+
+
+						//ActionHistory.RemoveAll(x => x.CreateDate < DateTime.UtcNow - TimeSpan.FromSeconds(10));
+						ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
+						//ActionHistory.RemoveAll(x => x.Invoked);
+
+						Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
 					}
 
-					// TODO: better data structure than list?
+					// Now remove the processed action from the queue so we can move on to the next (if any)
+					QueuedActions.Dequeue();
 
-					// smart clear history entries: 
-					// - all configured items processed
-					// - timeout
-
-					Console.WriteLine($"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
-
-					//ActionHistory.ForEach(x =>
-					//{
-					//	Console.WriteLine($"=> expdate: {x.ExpirationDate}");
-					//});
-
-
-					//ActionHistory.RemoveAll(x => x.CreateDate < DateTime.UtcNow - TimeSpan.FromSeconds(10));
-					ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
-					//ActionHistory.RemoveAll(x => x.Invoked);
-
-					Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
+					Console.WriteLine($"==>>> DequeuAction end loop for {nextActionToDequeue.GetType().Name}");
 				}
 
-				// Now remove the processed action from the queue so we can move on to the next (if any)
-				QueuedActions.Dequeue();
+				Console.WriteLine($"==>>> DequeuAction EXIT");
+			}
+			catch (Exception exception)
+			{
+				Console.WriteLine($"==>>> DequeuAction EXCEPTION: {exception.Message} {exception}");
+				throw;
 			}
 		}
 	}
