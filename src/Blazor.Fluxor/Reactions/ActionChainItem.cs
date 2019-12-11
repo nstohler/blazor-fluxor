@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Blazor.Fluxor.Reactions
 {
-	public class ActionHistoryItem
+	public class ActionChainItem
 	{
 		public object             Action         { get; set; }
-		public ActionHistoryItem  Parent         { get; set; }
+		public ActionChainItem  Parent         { get; set; }
 		public DateTime           ExpirationDate { get; set; }
 		public List<ReactionItem> ReactionItems  { get; set; } = new List<ReactionItem>();
 
@@ -18,7 +18,7 @@ namespace Blazor.Fluxor.Reactions
 			return Parent == null;
 		}
 
-		public ActionHistoryItem GetRoot()
+		public ActionChainItem GetRoot()
 		{
 			if (IsRoot())
 			{
@@ -28,9 +28,9 @@ namespace Blazor.Fluxor.Reactions
 			return Parent.GetRoot();
 		}
 
-		public List<ActionHistoryItem> GetAncestors()
+		public List<ActionChainItem> GetAncestors()
 		{
-			var results = new List<ActionHistoryItem>() {
+			var results = new List<ActionChainItem>() {
 				this
 			};
 			if (!IsRoot())

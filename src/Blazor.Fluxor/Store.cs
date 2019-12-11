@@ -39,8 +39,8 @@ namespace Blazor.Fluxor
 
 		//private readonly Dictionary<object, IHasReaction> ActionReactionDict = new Dictionary<object, IHasReaction>();
 
-		// TODO: simple list of ActionHistoryItem
-		private readonly List<ActionHistoryItem> ActionHistory = new List<ActionHistoryItem>();
+		// TODO: simple list of ActionChainItem
+		private readonly List<ActionChainItem> ActionChains = new List<ActionChainItem>();
 
 		// reactions
 		//private readonly Dictionary<Type, ReactionItem> TypeReactionItemDict = new Dictionary<Type, ReactionItem>();
@@ -169,7 +169,7 @@ namespace Blazor.Fluxor
 			if (baseAction == null)
 			{
 				//Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
-				ActionHistory.Add(new ActionHistoryItem() {
+				ActionChains.Add(new ActionChainItem() {
 					Action         = action,
 					Parent         = null, // is root
 					ExpirationDate = expirationDate,
@@ -179,7 +179,7 @@ namespace Blazor.Fluxor
 			else
 			{
 				//Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
-				var parent = ActionHistory.LastOrDefault(x => x.Action == baseAction);
+				var parent = ActionChains.LastOrDefault(x => x.Action == baseAction);
 
 				//Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
 
@@ -194,11 +194,11 @@ namespace Blazor.Fluxor
 				}
 
 				// add current item
-				ActionHistory.Add(new ActionHistoryItem() {
+				ActionChains.Add(new ActionChainItem() {
 					Action         = action,
 					Parent         = parent, // might still be null
 					ExpirationDate = expirationDate,
-					// ReactionItems = xxx // => do NOT set! only store/access in root actionHistoryItem!
+					// ReactionItems = xxx // => do NOT set! only store/access in root actionChainItem!
 				});
 			}
 		}
@@ -397,10 +397,10 @@ namespace Blazor.Fluxor
 		private void TriggerReactions(object nextActionToDequeue)
 		{
 			// handle Reactions
-			var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
-			var root         = historyEntry?.GetRoot() ?? null;
+			var actionChainItem = ActionChains.LastOrDefault(x => x.Action == nextActionToDequeue);
+			var root            = actionChainItem?.GetRoot() ?? null;
 
-			if (historyEntry != null && root != null)
+			if (actionChainItem != null && root != null)
 			{
 				var reactionItemsRegisteredInRoot = root.ReactionItems;
 
@@ -424,13 +424,13 @@ namespace Blazor.Fluxor
 					if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
 					{
 						// remove root and all children
-						var ancestors = historyEntry.GetAncestors();
-						ActionHistory.RemoveAll(x => ancestors.Contains(x));
+						var ancestors = actionChainItem.GetAncestors();
+						ActionChains.RemoveAll(x => ancestors.Contains(x));
 					}
 				}
 			}
 
-			ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
+			ActionChains.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
 		}
 	}
 }
