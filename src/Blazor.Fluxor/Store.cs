@@ -172,24 +172,24 @@ namespace Blazor.Fluxor
 				//Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
 				var parent = ActionHistory.LastOrDefault(x => x.Action == baseAction);
 
-				Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
+				//Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
 
-				if (parent == null)
+				// validate user intent
+				var rootReactionItems = parent?.GetRoot().ReactionItems;
+				if (parent == null || !rootReactionItems.Any() ||
+				    rootReactionItems.All(x => x.ActionType != action.GetType()))
 				{
 					// output warning, verify library user intent
 					Console.WriteLine(
-						$"There was no pre-registered reaction for the action/baseAction combo '{action.GetType().Name}/{baseAction.GetType().Name}' (via DispatchReaction?)");
+						$"WARNING: There was no pre-registered reaction-chain for action => reaction '{baseAction.GetType().Name} => {action.GetType().Name}' (via DispatchReaction?)");
 				}
-				// TODO: check if reactionItems contains baseAction/Action?
-				// 
 
 				// add current item
 				ActionHistory.Add(new ActionHistoryItem() {
 					Parent         = parent,
 					Action         = action,
 					ExpirationDate = expirationDate,
-					// ReactionItems  = clonedReactionItems
-					// ReactionItems = reactionItems // => only store in root actionHistoryItem?
+					// ReactionItems = xxx // => do NOT set! only store/access in root actionHistoryItem!
 				});
 			}
 
@@ -416,17 +416,12 @@ namespace Blazor.Fluxor
 									// Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
 								}
 							}
-							else
-							{
-								Console.WriteLine($"*** reaction has NO entries for {nextActionToDequeue.GetType().Name}");
-								//if (historyEntry != root)
-								//{
-								//	// output warning:
-								//	Console.WriteLine(
-								//		$"There was no registered reaction for {nextActionToDequeue.GetType().Name}, but a action/baseAction combo has been dispatched (via DispatchReaction)");
-								//	Ensure.That(true).IsFalse();
-								//}
-							}
+
+							//else
+							//{
+							//	Console.WriteLine(
+							//		$"*** reaction has NO entries for {nextActionToDequeue.GetType().Name}");
+							//}
 						}
 
 						// TODO: better data structure than list?

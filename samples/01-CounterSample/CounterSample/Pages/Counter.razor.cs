@@ -40,7 +40,7 @@ namespace CounterSample.Pages
             //    (IncrementCounterResultAction resultAction) =>
             //    {
             //        Console.WriteLine($"IncrementCounterResultAction received!");
-            //        Console.WriteLine($"==> IncrementCounterResultAction is {resultAction.Message}");
+            //        Console.WriteLine($"==> IncrementCounterResultAction is {resultAction.Message}"); 
             //    }
             //    // multiple registrations ? cleanup how ? timeouts ?
             //    ,
@@ -54,23 +54,22 @@ namespace CounterSample.Pages
             // BUG: the following is buggy, if the effect for IncrementCounterResultAction dispatches another reaction for IncrementCounterIsNowEvenResultAction which is not enabled/registered here!!! => add checks/warnings
             // action with 2 reactions 
             Dispatcher.Dispatch(new IncrementCounterAction()
-                //, TimeSpan.FromSeconds(10),
-                //(IncrementCounterResultAction resultAction) =>
-                //{
-                //    Console.WriteLine($"RESULT: IncrementCounterResultAction received!");
-                //    Console.WriteLine($"==> IncrementCounterResultAction is {resultAction.Message}");
-                //}
-                //// multiple registrations ? cleanup how ? timeouts ?
-                //,
-                //(IncrementCounterIsNowEvenResultAction resultAction) =>
-                //{
-                //    Console.WriteLine($"IS_NOW_EVEN: IncrementCounterIsNowEvenResultAction received!");
-                //    Console.WriteLine($"==> IncrementCounterIsNowEvenResultAction is even: {resultAction.IsEven}");
-                //}
-            );
+                , TimeSpan.FromSeconds(10),
 
-            // TODO: bug if only IncrementCounterResultAction active
-            // => extend: show warning in logs/console for dispatched reactions that are unregistered
+                (IncrementCounterResultAction resultAction) =>
+                {
+                    Console.WriteLine($"RESULT: IncrementCounterResultAction received!");
+                    Console.WriteLine($"==> IncrementCounterResultAction is {resultAction.Message}");
+                }
+                // // multiple registrations ? cleanup how ? timeouts ?
+
+                ,
+                (IncrementCounterIsNowEvenResultAction resultAction) =>
+                {
+                    Console.WriteLine($"IS_NOW_EVEN: IncrementCounterIsNowEvenResultAction received!");
+                    Console.WriteLine($"==> IncrementCounterIsNowEvenResultAction is even: {resultAction.IsEven}");
+                }
+            );
         }
 
         protected void IncrementCountNormal()
