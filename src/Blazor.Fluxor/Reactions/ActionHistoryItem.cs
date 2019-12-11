@@ -8,14 +8,15 @@ namespace Blazor.Fluxor.Reactions
 {
 	public class ActionHistoryItem
 	{
-		public ActionHistoryItem Parent { get; set; }
+		public object             Action         { get; set; }
+		public ActionHistoryItem  Parent         { get; set; }
+		public DateTime           ExpirationDate { get; set; }
+		public List<ReactionItem> ReactionItems  { get; set; } = new List<ReactionItem>();
 
-		public object   Action         { get; set; }
-		public DateTime ExpirationDate     { get; set; }
-
-		public List<ReactionItem> ReactionItems { get; set; } = new List<ReactionItem>();
-
-		public bool IsRoot() => this.Parent == null;
+		public bool IsRoot()
+		{
+			return Parent == null;
+		}
 
 		public ActionHistoryItem GetRoot()
 		{
@@ -36,6 +37,7 @@ namespace Blazor.Fluxor.Reactions
 			{
 				results.AddRange(Parent.GetAncestors());
 			}
+
 			return results;
 		}
 	}

@@ -144,25 +144,34 @@ namespace Blazor.Fluxor
 			bool wasAlreadyDispatching = QueuedActions.Any();
 			//Console.WriteLine($"dispatch...wasAlreadyDispatching: {wasAlreadyDispatching}");
 
-			//QueuedActions.Enqueue((action, resultAction));
 			QueuedActions.Enqueue(action);
 
+			QueueReactions(action, baseAction, timeout, resultAction1, resultAction2, resultAction3);
+
+			if (wasAlreadyDispatching)
+				return;
+
+			// HasActivatedStore is set to true when the page finishes loading
+			// At which point DequeueActions will be called
+			if (!HasActivatedStore)
+				return;
+
+			DequeueActions();
+		}
+
+		private void QueueReactions<T1, T2, T3>(object action, object baseAction, TimeSpan? timeout,
+			Action<T1> resultAction1, Action<T2> resultAction2, Action<T3> resultAction3)
+		{
 			// prepare reaction items
-			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
-
-			//var root = ActionHistory.LastOrDefault(x => x.)
-			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30)); // default 30 seconds 
-			//Console.WriteLine($"set expirationDate to {expirationDate}");
-
-			// TODO:
-			// TODO/BUG: check if reactionItems effectively contain calls that match, otherwise do not register those calls...
+			var reactionItems  = GetReactionItems(resultAction1, resultAction2, resultAction3);
+			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30)); // default 30 seconds (?)
 
 			if (baseAction == null)
 			{
 				//Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
 				ActionHistory.Add(new ActionHistoryItem() {
-					Parent         = null,
 					Action         = action,
+					Parent         = null, // is root
 					ExpirationDate = expirationDate,
 					ReactionItems  = reactionItems
 				});
@@ -186,22 +195,12 @@ namespace Blazor.Fluxor
 
 				// add current item
 				ActionHistory.Add(new ActionHistoryItem() {
-					Parent         = parent,
 					Action         = action,
+					Parent         = parent, // might still be null
 					ExpirationDate = expirationDate,
 					// ReactionItems = xxx // => do NOT set! only store/access in root actionHistoryItem!
 				});
 			}
-
-			if (wasAlreadyDispatching)
-				return;
-
-			// HasActivatedStore is set to true when the page finishes loading
-			// At which point DequeueActions will be called
-			if (!HasActivatedStore)
-				return;
-
-			DequeueActions();
 		}
 
 		private List<ReactionItem> GetReactionItems<T1, T2, T3>(Action<T1> resultAction1, Action<T2> resultAction2,
@@ -377,64 +376,7 @@ namespace Blazor.Fluxor
 
 						TriggerEffects(nextActionToDequeue);
 
-						// handle Reactions
-
-						var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
-						var root         = historyEntry?.GetRoot() ?? null;
-
-						if (historyEntry != null && root != null)
-						{
-							var reactionItemsRegisteredInRoot = root.ReactionItems;
-
-							if (reactionItemsRegisteredInRoot.Any())
-							{
-								Console.WriteLine($"*** reaction has entries for {nextActionToDequeue.GetType().Name}");
-								//Ensure.That(historyEntry != root).IsTrue(); // false
-
-								var reactionTypeKey = nextActionToDequeue.GetType();
-
-								var reactionItem =
-									reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
-
-								if (reactionItem != null && !reactionItem.Invoked)
-								{
-									Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
-									// execute reaction
-									reactionItem.Action.Invoke(nextActionToDequeue);
-									reactionItem.Invoked = true;
-
-									// root.Invoked = true;
-								}
-
-								// ALL registered reactions invoked (in root?)
-								if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
-								{
-									// remove root and all children
-									var ancestors = historyEntry.GetAncestors();
-									// Console.WriteLine($" >>> remove invoked ancestors: {ancestors.Count}");
-									ActionHistory.RemoveAll(x => ancestors.Contains(x));
-									// Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
-								}
-							}
-
-							//else
-							//{
-							//	Console.WriteLine(
-							//		$"*** reaction has NO entries for {nextActionToDequeue.GetType().Name}");
-							//}
-						}
-
-						// TODO: better data structure than list?
-
-						// smart clear history entries: 
-						// - all configured items processed
-						// - timeout
-
-						//Console.WriteLine($"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
-
-						ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
-
-						//Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
+						TriggerReactions(nextActionToDequeue);
 					}
 
 					// Now remove the processed action from the queue so we can move on to the next (if any)
@@ -450,6 +392,45 @@ namespace Blazor.Fluxor
 				Console.WriteLine($"DequeuAction EXCEPTION: {exception}");
 				throw;
 			}
+		}
+
+		private void TriggerReactions(object nextActionToDequeue)
+		{
+			// handle Reactions
+			var historyEntry = ActionHistory.LastOrDefault(x => x.Action == nextActionToDequeue);
+			var root         = historyEntry?.GetRoot() ?? null;
+
+			if (historyEntry != null && root != null)
+			{
+				var reactionItemsRegisteredInRoot = root.ReactionItems;
+
+				if (reactionItemsRegisteredInRoot.Any())
+				{
+					// Console.WriteLine($"*** reaction has entries for {nextActionToDequeue.GetType().Name}");
+					var reactionTypeKey = nextActionToDequeue.GetType();
+
+					var reactionItem =
+						reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
+
+					if (reactionItem != null && !reactionItem.Invoked)
+					{
+						// execute reaction
+						Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
+						reactionItem.Action.Invoke(nextActionToDequeue);
+						reactionItem.Invoked = true;
+					}
+
+					// ALL registered reactions invoked (in root?)
+					if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
+					{
+						// remove root and all children
+						var ancestors = historyEntry.GetAncestors();
+						ActionHistory.RemoveAll(x => ancestors.Contains(x));
+					}
+				}
+			}
+
+			ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
 		}
 	}
 }
