@@ -37,7 +37,7 @@ namespace Blazor.Fluxor
 
 		private readonly Queue<object> QueuedActions = new Queue<object>();
 
-		private readonly List<ActionChainItem> ActionChains = new List<ActionChainItem>();
+		//private readonly List<ActionChainItem> ActionChains = new List<ActionChainItem>();
 
 		private readonly Dictionary<object, ActionChainItem> ActionActionChainDict =
 			new Dictionary<object, ActionChainItem>();
@@ -357,7 +357,7 @@ namespace Blazor.Fluxor
 					ExpirationDate = expirationDate,
 					ReactionItems  = reactionItems
 				};
-				ActionChains.Add(rootChainItem);
+				//ActionChains.Add(rootChainItem);
 				ActionActionChainDict.Add(action, rootChainItem);
 			}
 			else
@@ -385,7 +385,7 @@ namespace Blazor.Fluxor
 					// ReactionItems = xxx // => do NOT set! only store/access in root actionChainItem!
 				};
 				// add current item
-				ActionChains.Add(subChainItem);
+				//ActionChains.Add(subChainItem);
 				ActionActionChainDict.Add(action, subChainItem);
 			}
 		}
@@ -393,7 +393,8 @@ namespace Blazor.Fluxor
 		private void TriggerReactions(object nextActionToDequeue)
 		{
 			// handle Reactions
-			var actionChainItem = ActionChains.LastOrDefault(x => x.Action == nextActionToDequeue);
+			//var actionChainItem = ActionChains.LastOrDefault(x => x.Action == nextActionToDequeue);
+			var actionChainItem = ActionActionChainDict.TryGetValue(nextActionToDequeue, out var item) ? item : null;
 			var root            = actionChainItem?.GetRoot() ?? null;
 
 			if (actionChainItem != null && root != null)
@@ -421,29 +422,30 @@ namespace Blazor.Fluxor
 					{
 						// remove root and all children
 						var ancestors = actionChainItem.GetAncestors();
-						ActionChains.RemoveAll(x => ancestors.Contains(x));
+						//ActionChains.RemoveAll(x => ancestors.Contains(x));
 						
 						foreach (var chainItem in ancestors)
 						{
-							Console.WriteLine($"ActionActionChainDict remove INVOKED item: {chainItem.Action.GetType().Name}");
+							//Console.WriteLine($"ActionActionChainDict remove INVOKED item: {chainItem.Action.GetType().Name}");
 							ActionActionChainDict.Remove(chainItem.Action);
 						}
 					}
 				}
 			}  
 
-			var expiredActions = ActionChains.Where(x => x.ExpirationDate < DateTime.UtcNow).ToList();
+			//var expiredActions = ActionChains.Where(x => x.ExpirationDate < DateTime.UtcNow).ToList();
+			var expiredActions = ActionActionChainDict.Values.Where(x => x.ExpirationDate < DateTime.UtcNow).ToList();
 
-			ActionChains.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
+			//ActionChains.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
 
 			// process dict
 			foreach (var expiredAction in expiredActions)
 			{
-				Console.WriteLine($"ActionActionChainDict remove EXPIRED item: {expiredAction.Action.GetType().Name}");
+				//Console.WriteLine($"ActionActionChainDict remove EXPIRED item: {expiredAction.Action.GetType().Name}");
 				ActionActionChainDict.Remove(expiredAction.Action);
 			}
-			Console.WriteLine($"ActionChains size: {ActionChains.Count}");
-			Console.WriteLine($"ActionActionChainDict size: {ActionActionChainDict.Count}");
+			// Console.WriteLine($"ActionChains size: {ActionChains.Count}");
+			//Console.WriteLine($"ActionActionChainDict size: {ActionActionChainDict.Count}");
 		}
 	}
 }
