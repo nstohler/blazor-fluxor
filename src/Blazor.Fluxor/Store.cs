@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Blazor.Fluxor.Reactions;
+using EnsureThat;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -85,7 +86,7 @@ namespace Blazor.Fluxor
 
 		public void DispatchReaction(object baseAction, TimeSpan timeout, object reaction)
 		{
-			// reaction dispatched as action, action is "reacts-to-action"
+			// note the SWITCH of baseAction/reaction parameter order:
 			Dispatch<object, object, object>(reaction, baseAction, timeout, null, null, null);
 		}
 
@@ -106,7 +107,8 @@ namespace Blazor.Fluxor
 			Dispatch<T, object, object>(action, null, timeout, resultAction, null, null);
 		}
 
-		public void Dispatch<T1, T2>(object action, TimeSpan? timeout, Action<T1> resultAction1, Action<T2> resultAction2)
+		public void Dispatch<T1, T2>(object action, TimeSpan? timeout, Action<T1> resultAction1,
+			Action<T2> resultAction2)
 		{
 			Dispatch<T1, T2, object>(action, null, timeout, resultAction1, resultAction2, null);
 		}
@@ -140,7 +142,7 @@ namespace Blazor.Fluxor
 			//	3: The effect immediately dispatches a new action
 			// The Queue ensures it is processed after its triggering action has completed rather than immediately
 			bool wasAlreadyDispatching = QueuedActions.Any();
-			Console.WriteLine($"dispatch...wasAlreadyDispatching: {wasAlreadyDispatching}");
+			//Console.WriteLine($"dispatch...wasAlreadyDispatching: {wasAlreadyDispatching}");
 
 			//QueuedActions.Enqueue((action, resultAction));
 			QueuedActions.Enqueue(action);
@@ -149,15 +151,15 @@ namespace Blazor.Fluxor
 			var reactionItems = GetReactionItems(resultAction1, resultAction2, resultAction3);
 
 			//var root = ActionHistory.LastOrDefault(x => x.)
-			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));	// default 30 seconds 
-			Console.WriteLine($"set expirationDate to {expirationDate}");
+			var expirationDate = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30)); // default 30 seconds 
+			//Console.WriteLine($"set expirationDate to {expirationDate}");
 
 			// TODO:
 			// TODO/BUG: check if reactionItems effectively contain calls that match, otherwise do not register those calls...
 
 			if (baseAction == null)
 			{
-				Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
+				//Console.WriteLine($"dispatch...only an action: {action.GetType().Name}");
 				ActionHistory.Add(new ActionHistoryItem() {
 					Parent         = null,
 					Action         = action,
@@ -167,12 +169,19 @@ namespace Blazor.Fluxor
 			}
 			else
 			{
-				Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
-				var parent              = ActionHistory.LastOrDefault(x => x.Action == baseAction);
-				//var root                = parent.GetRoot();
-				//var clonedReactionItems = parent.ReactionItems.Select(x => x.Clone()).ToList();
+				//Console.WriteLine($"dispatch...there is a baseAction: {baseAction.GetType().Name}");
+				var parent = ActionHistory.LastOrDefault(x => x.Action == baseAction);
 
-				// var clonedReactionItems = FastDeepCloner.DeepCloner.Clone(parent.ReactionItems);
+				Console.WriteLine($"   dispatch...parent is: {parent?.Action.GetType().Name ?? "(null)"}");
+
+				if (parent == null)
+				{
+					// output warning, verify library user intent
+					Console.WriteLine(
+						$"There was no pre-registered reaction for the action/baseAction combo '{action.GetType().Name}/{baseAction.GetType().Name}' (via DispatchReaction?)");
+				}
+				// TODO: check if reactionItems contains baseAction/Action?
+				// 
 
 				// add current item
 				ActionHistory.Add(new ActionHistoryItem() {
@@ -374,34 +383,49 @@ namespace Blazor.Fluxor
 						var root         = historyEntry?.GetRoot() ?? null;
 
 						if (historyEntry != null && root != null)
-							//if (historyEntry != null)
 						{
 							var reactionItemsRegisteredInRoot = root.ReactionItems;
-							//var reactionItemsRegisteredInRoot = historyEntry.ReactionItems;
 
-							var reactionTypeKey = nextActionToDequeue.GetType();
-
-							var reactionItem =
-								reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
-
-							if (reactionItem != null && !reactionItem.Invoked)
+							if (reactionItemsRegisteredInRoot.Any())
 							{
-								Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
-								// execute reaction
-								reactionItem.Action.Invoke(nextActionToDequeue);
-								reactionItem.Invoked = true;
+								Console.WriteLine($"*** reaction has entries for {nextActionToDequeue.GetType().Name}");
+								//Ensure.That(historyEntry != root).IsTrue(); // false
 
-								// root.Invoked = true;
+								var reactionTypeKey = nextActionToDequeue.GetType();
+
+								var reactionItem =
+									reactionItemsRegisteredInRoot.SingleOrDefault(x => x.ActionType == reactionTypeKey);
+
+								if (reactionItem != null && !reactionItem.Invoked)
+								{
+									Console.WriteLine($"--- invoke...{reactionItem.ActionType.Name}");
+									// execute reaction
+									reactionItem.Action.Invoke(nextActionToDequeue);
+									reactionItem.Invoked = true;
+
+									// root.Invoked = true;
+								}
+
+								// ALL registered reactions invoked (in root?)
+								if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
+								{
+									// remove root and all children
+									var ancestors = historyEntry.GetAncestors();
+									// Console.WriteLine($" >>> remove invoked ancestors: {ancestors.Count}");
+									ActionHistory.RemoveAll(x => ancestors.Contains(x));
+									// Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
+								}
 							}
-
-							// ALL registered reactions invoked (in root?)
-							if (reactionItemsRegisteredInRoot.TrueForAll(x => x.Invoked))
+							else
 							{
-								// remove root and all children
-								var ancestors = historyEntry.GetAncestors();
-								Console.WriteLine($" >>> remove invoked ancestors: {ancestors.Count}");
-								ActionHistory.RemoveAll(x => ancestors.Contains(x));
-								Console.WriteLine($" >>> removed ancestors ActionHistory count: {ActionHistory.Count}");
+								Console.WriteLine($"*** reaction has NO entries for {nextActionToDequeue.GetType().Name}");
+								//if (historyEntry != root)
+								//{
+								//	// output warning:
+								//	Console.WriteLine(
+								//		$"There was no registered reaction for {nextActionToDequeue.GetType().Name}, but a action/baseAction combo has been dispatched (via DispatchReaction)");
+								//	Ensure.That(true).IsFalse();
+								//}
 							}
 						}
 
@@ -411,33 +435,24 @@ namespace Blazor.Fluxor
 						// - all configured items processed
 						// - timeout
 
-						Console.WriteLine(
-							$"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
+						//Console.WriteLine($"ActionHistory size Before remove is {ActionHistory.Count} @ {DateTime.UtcNow}");
 
-						//ActionHistory.ForEach(x =>
-						//{
-						//	Console.WriteLine($"=> expdate: {x.ExpirationDate}");
-						//});
-
-
-						//ActionHistory.RemoveAll(x => x.CreateDate < DateTime.UtcNow - TimeSpan.FromSeconds(10));
 						ActionHistory.RemoveAll(x => x.ExpirationDate < DateTime.UtcNow);
-						//ActionHistory.RemoveAll(x => x.Invoked);
 
-						Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
+						//Console.WriteLine($"ActionHistory size is {ActionHistory.Count}");
 					}
 
 					// Now remove the processed action from the queue so we can move on to the next (if any)
 					QueuedActions.Dequeue();
 
-					Console.WriteLine($"==>>> DequeuAction end loop for {nextActionToDequeue.GetType().Name}");
+					//Console.WriteLine($"==>>> DequeuAction end loop for {nextActionToDequeue.GetType().Name}");
 				}
 
-				Console.WriteLine($"==>>> DequeuAction EXIT");
+				//Console.WriteLine($"==>>> DequeuAction EXIT");
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"==>>> DequeuAction EXCEPTION: {exception.Message} {exception}");
+				Console.WriteLine($"DequeuAction EXCEPTION: {exception}");
 				throw;
 			}
 		}

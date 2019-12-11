@@ -48,7 +48,7 @@ namespace CounterSample.Store.Counter
                 //dispatcher.Dispatch(reaction);
                 Console.WriteLine($"EFFECT IncrementCounterAction");
 
-                await Task.Delay(10);
+                await Task.Delay(100);
 
                 dispatcher.DispatchReaction(action, TimeSpan.FromSeconds(3),
                     new IncrementCounterResultAction()
@@ -76,8 +76,8 @@ namespace CounterSample.Store.Counter
         {
             Console.WriteLine($"EFFECT IncrementCounterResultAction");
 
-            await Task.Delay(500);
-
+            // delay a bit for fun
+            await Task.Delay(300);
 
             // BUG: if the following is enabled/dispatched,
             //      BUT there is no configuration in the original call from the blazor component
