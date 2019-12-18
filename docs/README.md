@@ -27,6 +27,11 @@ More sample projects will be added as the framework develops.
 Issues fixed
 - https://github.com/mrpmorris/blazor-fluxor/issues/98
 
+### New in 1.3.1
+- Fixed bug #98 (Cannot initialize store)
+
+### New in 1.3.0
+- Upgraded to DotNet Core 3.1 preview 4
 
 ### New in 1.2.0
 - Prevent JavaScript initialisation from being executed twice.
